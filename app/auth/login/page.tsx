@@ -1,64 +1,89 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Plane, AlertCircle } from "lucide-react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { authLogin, setAuthTokens } from "@/lib/api-client"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Plane, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { authLogin, setAuthTokens } from "@/lib/api-client";
 
 export default function LoginPage() {
-  const router = useRouter()
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [error, setError] = useState("")
-  const [loading, setLoading] = useState(false)
+  const router = useRouter();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
-    setLoading(true)
+    e.preventDefault();
+    setError("");
+    setLoading(true);
 
     // Validation
     if (!email || !password) {
-      setError("Preencha email e senha")
-      setLoading(false)
-      return
+      setError("Preencha email e senha");
+      setLoading(false);
+      return;
     }
 
     if (!email.includes("@")) {
-      setError("Email inválido")
-      setLoading(false)
-      return
+      setError("Email inválido");
+      setLoading(false);
+      return;
     }
 
     if (password.length < 6) {
-      setError("Senha deve ter no mínimo 6 caracteres")
-      setLoading(false)
-      return
+      setError("Senha deve ter no mínimo 6 caracteres");
+      setLoading(false);
+      return;
     }
 
     try {
-      const response = await authLogin(email, password)
+      const response = await authLogin(email, password);
 
-      // Store tokens and user
-      setAuthTokens(response.tokens)
-      localStorage.setItem("user", JSON.stringify(response.user))
+      // Store tokens
+      setAuthTokens({
+        token: response.accessToken,
+        refreshToken: response.refreshToken,
+      });
+
+      // Store user info
+      const user = {
+        id: response.id.toString(),
+        email: response.email,
+        username: response.username,
+        role: (response.roles?.[0] || "USER").replace("ROLE_", "") as
+          | "ADMIN"
+          | "MODERATOR"
+          | "USER",
+      };
+      localStorage.setItem("user", JSON.stringify(user));
+      localStorage.setItem("isAuthenticated", "true");
 
       // Redirect to dashboard
-      router.push("/dashboard")
+      router.push("/dashboard");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao fazer login. Tente novamente.")
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Erro ao fazer login. Tente novamente."
+      );
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-primary to-blue-900 flex items-center justify-center p-4">
@@ -71,7 +96,9 @@ export default function LoginPage() {
               </div>
             </div>
             <CardTitle className="text-2xl">Acessar Plataforma</CardTitle>
-            <CardDescription>Entre com sua conta para continuar</CardDescription>
+            <CardDescription>
+              Entre com sua conta para continuar
+            </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {error && (
@@ -122,7 +149,11 @@ export default function LoginPage() {
               </div>
             </div>
             <Link href="/auth/register">
-              <Button variant="outline" className="w-full h-10 bg-transparent cursor-pointer" disabled={loading}>
+              <Button
+                variant="outline"
+                className="w-full h-10 bg-transparent cursor-pointer"
+                disabled={loading}
+              >
                 Criar uma conta
               </Button>
             </Link>
@@ -133,5 +164,5 @@ export default function LoginPage() {
         </Card>
       </div>
     </div>
-  )
+  );
 }

@@ -1,65 +1,107 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useState } from "react"
-import { useRouter } from "next/navigation"
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { Plane, AlertCircle } from "lucide-react"
-import { Alert, AlertDescription } from "@/components/ui/alert"
-import { authRegister, setAuthTokens } from "@/lib/api-client"
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Plane, AlertCircle } from "lucide-react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { authRegister, setAuthTokens } from "@/lib/api-client";
 
 export default function RegisterPage() {
-  const router = useRouter()
-  const [formData, setFormData] = useState({ nome: "", email: "", password: "" })
-  const [error, setError] = useState("")
-  const [loading, setLoading] = useState(false)
+  const router = useRouter();
+  const [formData, setFormData] = useState({
+    username: "",
+    email: "",
+    password: "",
+    cpf: "",
+  });
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
 
   const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError("")
-    setLoading(true)
+    e.preventDefault();
+    setError("");
+    setLoading(true);
 
-    const { nome, email, password } = formData
+    const { username, email, password, cpf } = formData;
 
     // Validation
-    if (!nome || !email || !password) {
-      setError("Preencha todos os campos")
-      setLoading(false)
-      return
+    if (!username || !email || !password || !cpf) {
+      setError("Preencha todos os campos");
+      setLoading(false);
+      return;
+    }
+
+    if (username.length < 3) {
+      setError("Nome deve ter no mínimo 3 caracteres");
+      setLoading(false);
+      return;
     }
 
     if (!email.includes("@")) {
-      setError("Email inválido")
-      setLoading(false)
-      return
+      setError("Email inválido");
+      setLoading(false);
+      return;
     }
 
     if (password.length < 6) {
-      setError("Senha deve ter no mínimo 6 caracteres")
-      setLoading(false)
-      return
+      setError("Senha deve ter no mínimo 6 caracteres");
+      setLoading(false);
+      return;
+    }
+
+    if (cpf.length !== 11 || !/^\d+$/.test(cpf)) {
+      setError("CPF deve ter 11 dígitos numéricos");
+      setLoading(false);
+      return;
     }
 
     try {
-      const response = await authRegister(email, password, nome)
+      const response = await authRegister(email, password, username, cpf);
 
-      // Store tokens and user
-      setAuthTokens(response.tokens)
-      localStorage.setItem("user", JSON.stringify(response.user))
+      // Store tokens
+      setAuthTokens({
+        token: response.accessToken,
+        refreshToken: response.refreshToken,
+      });
+
+      // Store user info
+      const user = {
+        id: response.id.toString(),
+        email: response.email,
+        username: response.username,
+        role: (response.roles?.[0] || "USER").replace("ROLE_", "") as
+          | "ADMIN"
+          | "MODERATOR"
+          | "USER",
+      };
+      localStorage.setItem("user", JSON.stringify(user));
+      localStorage.setItem("isAuthenticated", "true");
 
       // Redirect to dashboard
-      router.push("/dashboard")
+      router.push("/dashboard");
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao criar conta. Tente novamente.")
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Erro ao criar conta. Tente novamente."
+      );
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-900 via-primary to-blue-900 flex items-center justify-center p-4">
@@ -83,14 +125,16 @@ export default function RegisterPage() {
             )}
             <form onSubmit={handleRegister} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Nome Completo</Label>
+                <Label htmlFor="name">Nome de Usuário</Label>
                 <Input
                   id="name"
                   type="text"
                   placeholder="João Silva"
                   className="h-10"
-                  value={formData.nome}
-                  onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+                  value={formData.username}
+                  onChange={(e) =>
+                    setFormData({ ...formData, username: e.target.value })
+                  }
                   disabled={loading}
                 />
               </div>
@@ -102,8 +146,28 @@ export default function RegisterPage() {
                   placeholder="seu@email.com"
                   className="h-10"
                   value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, email: e.target.value })
+                  }
                   disabled={loading}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="cpf">CPF</Label>
+                <Input
+                  id="cpf"
+                  type="text"
+                  placeholder="12345678901"
+                  className="h-10"
+                  value={formData.cpf}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      cpf: e.target.value.replace(/\D/g, ""),
+                    })
+                  }
+                  disabled={loading}
+                  maxLength={11}
                 />
               </div>
               <div className="space-y-2">
@@ -114,7 +178,9 @@ export default function RegisterPage() {
                   placeholder="••••••••"
                   className="h-10"
                   value={formData.password}
-                  onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  onChange={(e) =>
+                    setFormData({ ...formData, password: e.target.value })
+                  }
                   disabled={loading}
                 />
               </div>
@@ -135,7 +201,11 @@ export default function RegisterPage() {
               </div>
             </div>
             <Link href="/auth/login">
-              <Button variant="outline" className="w-full h-10 bg-transparent cursor-pointer" disabled={loading}>
+              <Button
+                variant="outline"
+                className="w-full h-10 bg-transparent cursor-pointer"
+                disabled={loading}
+              >
                 Voltar para Login
               </Button>
             </Link>
@@ -143,5 +213,5 @@ export default function RegisterPage() {
         </Card>
       </div>
     </div>
-  )
+  );
 }

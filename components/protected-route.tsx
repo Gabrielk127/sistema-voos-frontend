@@ -1,24 +1,24 @@
-"use client"
+"use client";
 
-import type React from "react"
+import type React from "react";
 
-import { useAuth } from "@/hooks/use-auth"
-import { useRouter } from "next/navigation"
-import { useEffect } from "react"
+import { useAuth } from "@/hooks/use-auth";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 interface ProtectedRouteProps {
-  children: React.ReactNode
+  children: React.ReactNode;
 }
 
 export function ProtectedRoute({ children }: ProtectedRouteProps) {
-  const { isAuthenticated, isLoading } = useAuth()
-  const router = useRouter()
+  const { isAuthenticated, isLoading } = useAuth();
+  const router = useRouter();
 
   useEffect(() => {
     if (!isLoading && !isAuthenticated) {
-      router.push("/auth/login")
+      router.push("/auth/login");
     }
-  }, [isAuthenticated, isLoading, router])
+  }, [isAuthenticated, isLoading, router]);
 
   if (isLoading) {
     return (
@@ -28,12 +28,12 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
           <p className="text-muted-foreground">Carregando...</p>
         </div>
       </div>
-    )
+    );
   }
 
   if (!isAuthenticated) {
-    return null
+    return null;
   }
 
-  return <>{children}</>
+  return <>{children}</>;
 }
