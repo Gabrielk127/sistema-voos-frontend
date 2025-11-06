@@ -10,8 +10,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,22 +35,22 @@ export interface Field {
   icon?: React.ReactNode;
 }
 
-interface CRUDLayoutProps {
+interface CRUDLayoutProps<T = any> {
   title: string;
   description?: string;
   icon?: React.ReactNode;
   fields: Field[];
-  data: any[];
+  data: T[];
   loading: boolean;
-  onAdd: (data: any) => Promise<void>;
-  onEdit: (id: number, data: any) => Promise<void>;
+  onAdd: (data: T) => Promise<void>;
+  onEdit: (id: number, data: T) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
   displayFields: string[]; // Campos a mostrar na tabela
-  renderTableRow?: (item: any) => React.ReactNode;
-  rowActions?: (item: any) => React.ReactNode;
+  renderTableRow?: (item: T) => React.ReactNode;
+  rowActions?: (item: T) => React.ReactNode;
 }
 
-export function CRUDLayout({
+export function CRUDLayout<T = any>({
   title,
   description,
   icon,
@@ -65,7 +63,7 @@ export function CRUDLayout({
   displayFields,
   renderTableRow,
   rowActions,
-}: CRUDLayoutProps) {
+}: CRUDLayoutProps<T>) {
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [formData, setFormData] = useState<any>({});
@@ -263,12 +261,12 @@ export function CRUDLayout({
                 ) : (
                   data.map((item, index) => (
                     <tr
-                      key={item.id}
+                      key={(item as any).id}
                       className="border-b hover:bg-muted/50 transition-colors last:border-0"
                     >
                       {displayFields.map((field) => (
                         <td key={field} className="py-3 px-4 text-foreground">
-                          {renderTableRow ? renderTableRow(item) : item[field]}
+                          {renderTableRow ? renderTableRow(item) : (item as any)[field]}
                         </td>
                       ))}
                       <td className="py-3 px-4 text-right">
@@ -310,8 +308,8 @@ export function CRUDLayout({
                                 <AlertDialogAction
                                   onClick={() =>
                                     handleDelete(
-                                      item.id,
-                                      item.nome || item.codigo
+                                      (item as any).id,
+                                      (item as any).nome || (item as any).codigo
                                     )
                                   }
                                   className="bg-destructive text-destructive-foreground hover:bg-destructive/90 cursor-pointer"
