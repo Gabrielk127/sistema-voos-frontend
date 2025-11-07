@@ -1,7 +1,7 @@
 "use client";
 
 import type React from "react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -28,13 +28,17 @@ export interface FormField {
     | "date"
     | "datetime-local"
     | "tel"
-    | "url";
+    | "url"
+    | "time"
+    | "select";
   placeholder?: string;
   required?: boolean;
   validation?: (value: string) => string | true | null;
   section?: string;
   hint?: string;
   icon?: React.ReactNode;
+  options?: Array<{ label: string; value: string }>;
+  fetchOptions?: () => Promise<Array<{ label: string; value: string }>>;
 }
 
 interface FormDialogProps {
@@ -102,11 +106,19 @@ export function FormDialog({
   };
 
   const handleSave = async () => {
-    if (!validateForm()) return;
+    console.log("🟡 [FORM-DIALOG] handleSave chamado com dados:", formData);
+    
+    if (!validateForm()) {
+      console.error("❌ [FORM-DIALOG] Validação falhou, erros:", errors);
+      return;
+    }
 
     try {
       setSaving(true);
+      console.log("🟡 [FORM-DIALOG] Iniciando onSave com:", formData);
       await onSave(formData);
+      console.log("🟢 [FORM-DIALOG] onSave completado com sucesso");
+      
       setMessage({
         type: "success",
         text: isEditing ? "Alterado com sucesso!" : "Criado com sucesso!",
@@ -118,6 +130,7 @@ export function FormDialog({
         setMessage(null);
       }, 1500);
     } catch (error) {
+      console.error("🔴 [FORM-DIALOG] Erro em onSave:", error);
       setMessage({
         type: "error",
         text: error instanceof Error ? error.message : "Erro ao salvar",
@@ -290,6 +303,24 @@ function FieldsGroup({
   onFieldChange,
   saving,
 }: FieldsGroupProps) {
+  const [selectOptions, setSelectOptions] = useState<
+    Record<string, Array<{ label: string; value: string }>>
+  >({});
+
+  useEffect(() => {
+    // Carregar opções para selects
+    fields.forEach((field) => {
+      if (field.type === "select" && field.fetchOptions) {
+        field.fetchOptions().then((options) => {
+          setSelectOptions((prev) => ({
+            ...prev,
+            [field.name]: options,
+          }));
+        });
+      }
+    });
+  }, [fields]);
+
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
       {fields.map((field) => (
@@ -306,23 +337,51 @@ function FieldsGroup({
           </div>
 
           <div className="relative">
-            <Input
-              id={field.name}
-              type={field.type}
-              placeholder={field.placeholder}
-              value={formData[field.name] || ""}
-              onChange={(e) => onFieldChange(field.name, e.target.value)}
-              disabled={saving}
-              className={`
-                transition-all duration-200
-                ${
-                  errors[field.name]
-                    ? "border-red-500 focus:border-red-500 focus:ring-red-200 bg-red-50"
-                    : "focus:ring-2 focus:ring-blue-500/20"
-                }
-                ${field.required ? "font-medium" : ""}
-              `}
-            />
+            {field.type === "select" ? (
+              <select
+                id={field.name}
+                value={formData[field.name] || ""}
+                onChange={(e) => onFieldChange(field.name, e.target.value)}
+                disabled={saving}
+                className={`
+                  w-full px-3 py-2 border rounded-md text-sm
+                  transition-all duration-200 bg-white
+                  ${
+                    errors[field.name]
+                      ? "border-red-500 focus:border-red-500 focus:ring-red-200 bg-red-50"
+                      : "border-input focus:ring-2 focus:ring-blue-500/20"
+                  }
+                  ${field.required ? "font-medium" : ""}
+                `}
+              >
+                <option value="">{field.placeholder || "Selecione..."}</option>
+                {(selectOptions[field.name] || field.options || []).map(
+                  (option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
+                    </option>
+                  )
+                )}
+              </select>
+            ) : (
+              <Input
+                id={field.name}
+                type={field.type}
+                placeholder={field.placeholder}
+                value={formData[field.name] || ""}
+                onChange={(e) => onFieldChange(field.name, e.target.value)}
+                disabled={saving}
+                className={`
+                  transition-all duration-200
+                  ${
+                    errors[field.name]
+                      ? "border-red-500 focus:border-red-500 focus:ring-red-200 bg-red-50"
+                      : "focus:ring-2 focus:ring-blue-500/20"
+                  }
+                  ${field.required ? "font-medium" : ""}
+                `}
+              />
+            )}
           </div>
 
           {/* Erro */}

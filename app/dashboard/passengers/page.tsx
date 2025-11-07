@@ -9,15 +9,26 @@ import {
   updatePassenger,
   deletePassenger,
   type Passenger,
+  type CreatePassengerRequest,
 } from "@/lib/api-client";
+import { usePermissions } from "@/hooks/use-permissions";
+import { useRouter } from "next/navigation";
 
 export default function PassengersPage() {
   const [passengers, setPassengers] = useState<Passenger[]>([]);
   const [loading, setLoading] = useState(true);
+  const { canViewPassengers, canManagePassengers } = usePermissions();
+  const router = useRouter();
 
   useEffect(() => {
+    if (!canViewPassengers()) {
+      console.log("[PERMISSION] Acesso negado à página de passageiros. Role insuficiente.");
+      router.push("/dashboard");
+      return;
+    }
+    console.log("[PERMISSION] Acesso permitido à página de passageiros");
     loadPassengers();
-  }, []);
+  }, [canViewPassengers, router]);
 
   const loadPassengers = async () => {
     try {
@@ -31,17 +42,29 @@ export default function PassengersPage() {
     }
   };
 
-  const handleAdd = async (formData: Omit<Passenger, "id">) => {
+  const handleAdd = async (formData: any) => {
+    if (!canManagePassengers()) {
+      alert("Você não tem permissão para criar passageiros");
+      return;
+    }
     await createPassenger(formData);
     await loadPassengers();
   };
 
-  const handleEdit = async (id: number, formData: Omit<Passenger, "id">) => {
+  const handleEdit = async (id: number, formData: any) => {
+    if (!canViewPassengers()) {
+      alert("Você não tem permissão para editar passageiros");
+      return;
+    }
     await updatePassenger(id, formData);
     await loadPassengers();
   };
 
   const handleDelete = async (id: number) => {
+    if (!canManagePassengers()) {
+      alert("Você não tem permissão para deletar passageiros");
+      return;
+    }
     await deletePassenger(id);
     await loadPassengers();
   };
@@ -55,23 +78,13 @@ export default function PassengersPage() {
         description="Cadastre, edite e gerencie todos os passageiros do sistema"
         icon="👥"
         fields={[
-          // Seção: Informações Pessoais
           {
-            name: "nome",
-            label: "Nome Completo",
+            name: "username",
+            label: "Nome de Usuário",
             type: "text",
-            placeholder: "João Silva Santos",
+            placeholder: "joao_silva",
             required: true,
-            section: "Informações Pessoais",
-            icon: "👤",
-            hint: "Nome como consta no documento de identidade",
-            validation: (value: string) => {
-              if (value.length < 3)
-                return "Nome deve ter no mínimo 3 caracteres";
-              if (!/^[a-zA-Z\s]+$/.test(value))
-                return "Apenas letras e espaços";
-              return true;
-            },
+            hint: "Nome único para login",
           },
           {
             name: "email",
@@ -79,24 +92,14 @@ export default function PassengersPage() {
             type: "email",
             placeholder: "joao@example.com",
             required: true,
-            section: "Informações Pessoais",
-            icon: "📧",
             hint: "Email válido para contato",
-            validation: (value: string) => {
-              if (!value.includes("@")) return "Email inválido";
-              return true;
-            },
           },
-
-          // Seção: Documentação
           {
             name: "cpf",
             label: "CPF",
             type: "text",
             placeholder: "12345678900",
             required: true,
-            section: "Documentação",
-            icon: "📄",
             hint: "Apenas números (11 dígitos)",
             validation: (value: string) => {
               const cpfClean = value.replace(/\D/g, "");
@@ -105,26 +108,23 @@ export default function PassengersPage() {
             },
           },
           {
-            name: "dataAtendimento",
-            label: "Data de Atendimento",
-            type: "date",
-            required: true,
-            section: "Documentação",
-            icon: "📅",
-            hint: "Data do primeiro atendimento",
-            validation: (value: string) => {
-              const date = new Date(value);
-              const today = new Date();
-              return date <= today ? true : "Data não pode ser no futuro";
-            },
+            name: "password",
+            label: "Senha",
+            type: "password",
+            placeholder: "••••••••",
+            required: false,
+            hint: "Deixe em branco para manter a senha atual",
           },
         ]}
         data={passengers}
         loading={loading}
+        canAdd={canManagePassengers()}
+        canEdit={canManagePassengers()}
+        canDelete={canManagePassengers()}
         onAdd={handleAdd}
         onEdit={handleEdit}
         onDelete={handleDelete}
-        displayFields={["id", "nome", "email", "cpf", "dataAtendimento"]}
+        displayFields={["id", "username", "email", "cpf"]}
       />
     </DashboardLayout>
   );

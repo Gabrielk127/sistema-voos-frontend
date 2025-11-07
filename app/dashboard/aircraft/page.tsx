@@ -9,14 +9,24 @@ import {
   updateAircraft,
   deleteAircraft,
   type Aircraft,
+  type CreateAircraftRequest,
+  listAircraftTypes,
 } from "@/lib/api-client";
 import { Plane } from "lucide-react";
+import { usePermissions } from "@/hooks/use-permissions";
+import { useRouter } from "next/navigation";
 
 export default function AircraftPage() {
   const [aircraft, setAircraft] = useState<Aircraft[]>([]);
   const [loading, setLoading] = useState(true);
+  const { canManageFlights } = usePermissions();
+  const router = useRouter();
 
   useEffect(() => {
+    if (!canManageFlights()) {
+      router.push("/dashboard");
+      return;
+    }
     loadAircraft();
   }, []);
 
@@ -34,45 +44,29 @@ export default function AircraftPage() {
 
   const fields: Field[] = [
     {
-      name: "modelo",
-      label: "Modelo",
-      type: "text",
-      placeholder: "ex: Boeing 737",
+      name: "aircraftTypeId",
+      label: "Tipo de Aeronave",
+      type: "select",
+      placeholder: "Selecione o tipo",
       required: true,
-      validation: (value: string) =>
-        value.length >= 2 ? true : "Modelo deve ter no mínimo 2 caracteres",
+      fetchOptions: () =>
+        listAircraftTypes().then((types) =>
+          types.map((t) => ({
+            label: `${t.code} - ${t.name}`,
+            value: t.id.toString(),
+          }))
+        ),
     },
     {
-      name: "fabricante",
-      label: "Fabricante",
+      name: "registration",
+      label: "Matrícula",
       type: "text",
-      placeholder: "ex: Boeing",
+      placeholder: "PT-AAA",
       required: true,
       validation: (value: string) =>
-        value.length >= 2 ? true : "Fabricante deve ter no mínimo 2 caracteres",
-    },
-    {
-      name: "capacidade",
-      label: "Capacidade",
-      type: "number",
-      placeholder: "180",
-      required: true,
-      validation: (value: string) =>
-        !isNaN(Number(value)) && Number(value) > 0
+        /^[A-Z]{2}-[A-Z]{3}$/.test(value) || /^[A-Z]{5}$/.test(value)
           ? true
-          : "Capacidade deve ser um número positivo",
-    },
-    {
-      name: "anoFabricacao",
-      label: "Ano de Fabricação",
-      type: "number",
-      placeholder: "2020",
-      required: true,
-      validation: (value: string) => {
-        const year = Number(value);
-        const currentYear = new Date().getFullYear();
-        return year >= 1900 && year <= currentYear ? true : "Ano inválido";
-      },
+          : "Matrícula inválida (ex: PT-AAA ou PTAAA)",
     },
   ];
 
@@ -87,35 +81,30 @@ export default function AircraftPage() {
         fields={fields}
         data={aircraft}
         loading={loading}
-        onAdd={async (data) => {
-          await createAircraft({
-            modelo: data.modelo,
-            fabricante: data.fabricante,
-            capacidade: Number(data.capacidade),
-            anoFabricacao: Number(data.anoFabricacao),
-          });
+        canAdd={canManageFlights()}
+        canEdit={canManageFlights()}
+        canDelete={canManageFlights()}
+        onAdd={async (data: any) => {
+          const aircraftData: CreateAircraftRequest = {
+            aircraftTypeId: Number(data.aircraftTypeId),
+            registration: data.registration,
+          };
+          await createAircraft(aircraftData);
           loadAircraft();
         }}
-        onEdit={async (id, data) => {
-          await updateAircraft(id, {
-            modelo: data.modelo,
-            fabricante: data.fabricante,
-            capacidade: Number(data.capacidade),
-            anoFabricacao: Number(data.anoFabricacao),
-          });
+        onEdit={async (id, data: any) => {
+          const aircraftData: Partial<CreateAircraftRequest> = {
+            aircraftTypeId: Number(data.aircraftTypeId),
+            registration: data.registration,
+          };
+          await updateAircraft(id, aircraftData);
           loadAircraft();
         }}
         onDelete={async (id) => {
           await deleteAircraft(id);
           loadAircraft();
         }}
-        displayFields={[
-          "id",
-          "modelo",
-          "fabricante",
-          "capacidade",
-          "anoFabricacao",
-        ]}
+        displayFields={["id", "registration"]}
       />
     </DashboardLayout>
   );

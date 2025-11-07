@@ -9,14 +9,24 @@ import {
   updateEmployee,
   deleteEmployee,
   type Employee,
+  type CreateEmployeeRequest,
+  listEmployeeCategories,
 } from "@/lib/api-client";
 import { Users } from "lucide-react";
+import { usePermissions } from "@/hooks/use-permissions";
+import { useRouter } from "next/navigation";
 
 export default function EmployeesPage() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
+  const { canViewEmployees, canManageEmployees } = usePermissions();
+  const router = useRouter();
 
   useEffect(() => {
+    if (!canViewEmployees()) {
+      router.push("/dashboard");
+      return;
+    }
     loadEmployees();
   }, []);
 
@@ -34,7 +44,18 @@ export default function EmployeesPage() {
 
   const fields: Field[] = [
     {
-      name: "nome",
+      name: "employeeCategoryId",
+      label: "Categoria",
+      type: "select",
+      placeholder: "Selecione uma categoria",
+      required: true,
+      fetchOptions: () =>
+        listEmployeeCategories().then((cats) =>
+          cats.map((c) => ({ label: c.type, value: c.id.toString() }))
+        ),
+    },
+    {
+      name: "name",
       label: "Nome",
       type: "text",
       placeholder: "Maria Silva",
@@ -51,37 +72,6 @@ export default function EmployeesPage() {
       validation: (value: string) =>
         /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value) ? true : "Email inválido",
     },
-    {
-      name: "cpf",
-      label: "CPF",
-      type: "text",
-      placeholder: "12345678900",
-      required: true,
-      validation: (value: string) =>
-        value.replace(/\D/g, "").length === 11
-          ? true
-          : "CPF deve ter 11 dígitos",
-    },
-    {
-      name: "cargo",
-      label: "Cargo",
-      type: "text",
-      placeholder: "Piloto",
-      required: true,
-      validation: (value: string) =>
-        value.length >= 2 ? true : "Cargo deve ter no mínimo 2 caracteres",
-    },
-    {
-      name: "dataAdmissao",
-      label: "Data de Admissão",
-      type: "date",
-      required: true,
-      validation: (value: string) => {
-        const date = new Date(value);
-        const today = new Date();
-        return date <= today ? true : "Data não pode ser no futuro";
-      },
-    },
   ];
 
   return (
@@ -95,31 +85,44 @@ export default function EmployeesPage() {
         fields={fields}
         data={employees}
         loading={loading}
-        onAdd={async (data) => {
-          await createEmployee({
-            nome: data.nome,
-            email: data.email,
-            cpf: data.cpf.replace(/\D/g, ""),
-            cargo: data.cargo,
-            dataAdmissao: data.dataAdmissao,
-          });
+        canAdd={canManageEmployees()}
+        canEdit={canManageEmployees()}
+        canDelete={canManageEmployees()}
+        onAdd={async (data: any) => {
+          if (!canManageEmployees()) {
+            alert("Você não tem permissão para criar funcionários");
+            return;
+          }
+          const employeeData: CreateEmployeeRequest = {
+            employeeCategoryId: Number(data.employeeCategoryId),
+            name: data.name as string,
+            email: data.email as string,
+          };
+          await createEmployee(employeeData);
           loadEmployees();
         }}
-        onEdit={async (id, data) => {
-          await updateEmployee(id, {
-            nome: data.nome,
-            email: data.email,
-            cpf: data.cpf.replace(/\D/g, ""),
-            cargo: data.cargo,
-            dataAdmissao: data.dataAdmissao,
-          });
+        onEdit={async (id, data: any) => {
+          if (!canManageEmployees()) {
+            alert("Você não tem permissão para editar funcionários");
+            return;
+          }
+          const employeeData: Partial<CreateEmployeeRequest> = {
+            employeeCategoryId: Number(data.employeeCategoryId),
+            name: data.name as string,
+            email: data.email as string,
+          };
+          await updateEmployee(id, employeeData);
           loadEmployees();
         }}
         onDelete={async (id) => {
+          if (!canManageEmployees()) {
+            alert("Você não tem permissão para deletar funcionários");
+            return;
+          }
           await deleteEmployee(id);
           loadEmployees();
         }}
-        displayFields={["id", "nome", "email", "cargo", "dataAdmissao"]}
+        displayFields={["id", "name", "email"]}
       />
     </DashboardLayout>
   );

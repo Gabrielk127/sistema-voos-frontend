@@ -1,6 +1,6 @@
 const API_BASE_URL =
   typeof window !== "undefined"
-    ? process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"
+    ? (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080").replace(/\/$/, "")
     : "http://localhost:8080";
 
 export interface User {
@@ -72,14 +72,18 @@ async function apiCall<T>(
     const token = getAuthToken();
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
+      console.log(`[AUTH] Token added (${token.substring(0, 20)}...)`);
+    } else {
+      console.warn(`[AUTH] No token found for authenticated endpoint: ${endpoint}`);
     }
   }
 
   console.log(`[API] ${fetchOptions.method || "GET"} ${url}`, {
-    headers,
-    body: fetchOptions.body
-      ? JSON.parse(fetchOptions.body as string)
-      : undefined,
+    isPublic,
+    headers: {
+      "Content-Type": headers["Content-Type"],
+      "Authorization": headers["Authorization"] ? "Bearer ..." : "none",
+    },
   });
 
   try {
@@ -176,17 +180,58 @@ export async function authHealth(): Promise<{ message: string }> {
   return apiCall("/auth/health", { isPublic: true });
 }
 
+// DEBUG endpoint to test authentication
+export async function testAuth(): Promise<any> {
+  console.log("Testing authentication...");
+  const token = getAuthToken();
+  console.log("Token in storage:", token ? `${token.substring(0, 20)}...` : "NOT FOUND");
+  
+  try {
+    const response = await fetch(
+      `${API_BASE_URL}/passengers`,
+      {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+      }
+    );
+    
+    const data = await response.json();
+    console.log("Auth Test Result:", {
+      status: response.status,
+      statusText: response.statusText,
+      data,
+    });
+    
+    return {
+      status: response.status,
+      statusText: response.statusText,
+      data,
+    };
+  } catch (error) {
+    console.error("Auth test failed:", error);
+    throw error;
+  }
+}
+
 // AIRCRAFT ENDPOINTS
 export interface Aircraft {
   id: number;
-  modelo: string;
-  fabricante: string;
-  capacidade: number;
-  anoFabricacao: number;
+  aircraftType: AircraftType;
+  registration: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateAircraftRequest {
+  aircraftTypeId: number;
+  registration: string;
 }
 
 export async function createAircraft(
-  data: Omit<Aircraft, "id">
+  data: CreateAircraftRequest
 ): Promise<Aircraft> {
   return apiCall("/aircraft", {
     method: "POST",
@@ -204,7 +249,7 @@ export async function getAircraft(id: number): Promise<Aircraft> {
 
 export async function updateAircraft(
   id: number,
-  data: Omit<Aircraft, "id">
+  data: Partial<CreateAircraftRequest>
 ): Promise<Aircraft> {
   return apiCall(`/aircraft/${id}`, {
     method: "PUT",
@@ -221,10 +266,11 @@ export async function deleteAircraft(id: number): Promise<void> {
 // AIRPORT ENDPOINTS
 export interface Airport {
   id: number;
-  nome: string;
-  codigo: string;
-  cidade: string;
-  pais: string;
+  code: string;
+  name: string;
+  city: string;
+  country: string;
+  description?: string;
 }
 
 export async function createAirport(
@@ -260,20 +306,129 @@ export async function deleteAirport(id: number): Promise<void> {
   });
 }
 
+// AIRCRAFT TYPE ENDPOINTS
+export interface AircraftType {
+  id: number;
+  type: string;
+  description?: string;
+  passengerCapacity?: number;
+  aircraftCategory?: any;
+  maxSpeed?: number;
+  rangeKm?: number;
+  cargoCapacityKg?: number;
+  maxAltitudeFt?: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export async function listAircraftTypes(): Promise<AircraftType[]> {
+  return apiCall("/aircraft-types", { isPublic: true });
+}
+
+export async function createAircraftType(
+  data: Omit<AircraftType, "id">
+): Promise<AircraftType> {
+  return apiCall("/aircraft-types", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getAircraftType(id: number): Promise<AircraftType> {
+  return apiCall(`/aircraft-types/${id}`, { isPublic: true });
+}
+
+export async function updateAircraftType(
+  id: number,
+  data: Partial<AircraftType>
+): Promise<AircraftType> {
+  return apiCall(`/aircraft-types/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteAircraftType(id: number): Promise<void> {
+  return apiCall(`/aircraft-types/${id}`, {
+    method: "DELETE",
+  });
+}
+
+// FLIGHT TYPE ENDPOINTS
+export interface FlightType {
+  id: number;
+  type: string;
+  description?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export async function listFlightTypes(): Promise<FlightType[]> {
+  return apiCall("/flight-types", { isPublic: true });
+}
+
+export async function createFlightType(
+  data: Omit<FlightType, "id">
+): Promise<FlightType> {
+  return apiCall("/flight-types", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getFlightType(id: number): Promise<FlightType> {
+  return apiCall(`/flight-types/${id}`, { isPublic: true });
+}
+
+export async function updateFlightType(
+  id: number,
+  data: Partial<FlightType>
+): Promise<FlightType> {
+  return apiCall(`/flight-types/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteFlightType(id: number): Promise<void> {
+  return apiCall(`/flight-types/${id}`, {
+    method: "DELETE",
+  });
+}
+
 // FLIGHT ENDPOINTS
 export interface Flight {
   id: number;
-  codigo: string;
-  aeronaveId: number;
-  aeroportoOrigemId: number;
-  aeroportoDestinoId: number;
-  dataPartida: string;
-  dataChegada: string;
-  preco: number;
-  assentosDisponiveis: number;
+  flightType: FlightType;
+  aircraftType: AircraftType;
+  originAirport: Airport;
+  destinationAirport: Airport;
+  departureDate: string;
+  scheduledDepartureTime: string;
+  arrivalDate: string;
+  scheduledArrivalTime: string;
+  scheduledDurationMin: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export async function createFlight(data: Omit<Flight, "id">): Promise<Flight> {
+export interface CreateFlightRequest {
+  idFlightType: number;
+  idAircraftType: number;
+  idOriginAirport: number;
+  idDestinationAirport: number;
+  departureDate: string;
+  scheduledDepartureTime: string;
+  arrivalDate: string;
+  scheduledArrivalTime: string;
+  scheduledDurationMin: string;
+  status?: string;
+}
+
+export async function createFlight(
+  data: CreateFlightRequest
+): Promise<Flight> {
   return apiCall("/flights", {
     method: "POST",
     body: JSON.stringify(data),
@@ -290,7 +445,7 @@ export async function getFlight(id: number): Promise<Flight> {
 
 export async function updateFlight(
   id: number,
-  data: Omit<Flight, "id">
+  data: Partial<CreateFlightRequest>
 ): Promise<Flight> {
   return apiCall(`/flights/${id}`, {
     method: "PUT",
@@ -307,14 +462,22 @@ export async function deleteFlight(id: number): Promise<void> {
 // PASSENGER ENDPOINTS
 export interface Passenger {
   id: number;
-  nome: string;
   email: string;
+  username: string;
   cpf: string;
-  dataAtendimento: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreatePassengerRequest {
+  email: string;
+  username: string;
+  cpf: string;
+  password?: string;
 }
 
 export async function createPassenger(
-  data: Omit<Passenger, "id">
+  data: CreatePassengerRequest
 ): Promise<Passenger> {
   return apiCall("/passengers", {
     method: "POST",
@@ -332,7 +495,7 @@ export async function getPassenger(id: number): Promise<Passenger> {
 
 export async function updatePassenger(
   id: number,
-  data: Omit<Passenger, "id">
+  data: Partial<CreatePassengerRequest>
 ): Promise<Passenger> {
   return apiCall(`/passengers/${id}`, {
     method: "PUT",
@@ -346,18 +509,67 @@ export async function deletePassenger(id: number): Promise<void> {
   });
 }
 
+// EMPLOYEE CATEGORY ENDPOINTS
+// EMPLOYEE CATEGORY ENDPOINTS
+export interface EmployeeCategory {
+  id: number;
+  type: string;
+  description?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export async function listEmployeeCategories(): Promise<EmployeeCategory[]> {
+  return apiCall("/employee-categories");
+}
+
+export async function createEmployeeCategory(
+  data: Omit<EmployeeCategory, "id">
+): Promise<EmployeeCategory> {
+  return apiCall("/employee-categories", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getEmployeeCategory(id: number): Promise<EmployeeCategory> {
+  return apiCall(`/employee-categories/${id}`);
+}
+
+export async function updateEmployeeCategory(
+  id: number,
+  data: Partial<EmployeeCategory>
+): Promise<EmployeeCategory> {
+  return apiCall(`/employee-categories/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteEmployeeCategory(id: number): Promise<void> {
+  return apiCall(`/employee-categories/${id}`, {
+    method: "DELETE",
+  });
+}
+
 // EMPLOYEE ENDPOINTS
 export interface Employee {
   id: number;
-  nome: string;
+  employeeCategory: EmployeeCategory;
+  name: string;
   email: string;
-  cpf: string;
-  cargo: string;
-  dataAdmissao: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateEmployeeRequest {
+  employeeCategoryId: number;
+  name: string;
+  email: string;
 }
 
 export async function createEmployee(
-  data: Omit<Employee, "id">
+  data: CreateEmployeeRequest
 ): Promise<Employee> {
   return apiCall("/employees", {
     method: "POST",
@@ -375,7 +587,7 @@ export async function getEmployee(id: number): Promise<Employee> {
 
 export async function updateEmployee(
   id: number,
-  data: Omit<Employee, "id">
+  data: Partial<CreateEmployeeRequest>
 ): Promise<Employee> {
   return apiCall(`/employees/${id}`, {
     method: "PUT",
@@ -389,17 +601,86 @@ export async function deleteEmployee(id: number): Promise<void> {
   });
 }
 
+// TICKET ENDPOINTS
+export interface Ticket {
+  id: number;
+  booking: any; // BookingResponse
+  passengerName: string;
+  seatNumber: number;
+  checkInCompleted: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateTicketRequest {
+  bookingId: number;
+  passengerName: string;
+  seatNumber: number;
+  checkInCompleted?: boolean;
+}
+
+export async function createTicket(
+  data: CreateTicketRequest
+): Promise<Ticket> {
+  return apiCall("/tickets", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function listTickets(): Promise<Ticket[]> {
+  return apiCall("/tickets");
+}
+
+export async function getTicket(id: number): Promise<Ticket> {
+  return apiCall(`/tickets/${id}`);
+}
+
+export async function updateTicket(
+  id: number,
+  data: Partial<CreateTicketRequest>
+): Promise<Ticket> {
+  return apiCall(`/tickets/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteTicket(id: number): Promise<void> {
+  return apiCall(`/tickets/${id}`, {
+    method: "DELETE",
+  });
+}
+
 // BOOKING ENDPOINTS
 export interface Booking {
   id: number;
-  passageiroId: number;
-  vooId: number;
-  assento: string;
-  dataReserva: string;
+  passenger: Passenger;
+  flight: Flight;
+  bookingNumber: string;
+  purchaseDate: string;
+  totalAmount: number;
+  paymentMethod: string;
+  paymentStatus: string;
+  confirmationDate: string;
+  cancellationDate: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateBookingRequest {
+  passengerId: number;
+  flightId: number;
+  bookingNumber?: string;
+  purchaseDate: string;
+  totalAmount: number;
+  paymentMethod?: string;
+  paymentStatus?: string;
+  numberOfSeats?: number;
 }
 
 export async function createBooking(
-  data: Omit<Booking, "id">
+  data: CreateBookingRequest
 ): Promise<Booking> {
   return apiCall("/bookings", {
     method: "POST",
@@ -417,7 +698,7 @@ export async function getBooking(id: number): Promise<Booking> {
 
 export async function updateBooking(
   id: number,
-  data: Omit<Booking, "id">
+  data: Partial<CreateBookingRequest>
 ): Promise<Booking> {
   return apiCall(`/bookings/${id}`, {
     method: "PUT",
@@ -427,6 +708,55 @@ export async function updateBooking(
 
 export async function deleteBooking(id: number): Promise<void> {
   return apiCall(`/bookings/${id}`, {
+    method: "DELETE",
+  });
+}
+
+// FLIGHT CREW ENDPOINTS
+export interface FlightCrew {
+  id: number;
+  flight: Flight;
+  employee: Employee;
+  role: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CreateFlightCrewRequest {
+  flightId: number;
+  employeeId: number;
+  role: string;
+}
+
+export async function listFlightCrews(): Promise<FlightCrew[]> {
+  return apiCall("/flight-crews");
+}
+
+export async function createFlightCrew(
+  data: CreateFlightCrewRequest
+): Promise<FlightCrew> {
+  return apiCall("/flight-crews", {
+    method: "POST",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function getFlightCrew(id: number): Promise<FlightCrew> {
+  return apiCall(`/flight-crews/${id}`);
+}
+
+export async function updateFlightCrew(
+  id: number,
+  data: Partial<CreateFlightCrewRequest>
+): Promise<FlightCrew> {
+  return apiCall(`/flight-crews/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export async function deleteFlightCrew(id: number): Promise<void> {
+  return apiCall(`/flight-crews/${id}`, {
     method: "DELETE",
   });
 }

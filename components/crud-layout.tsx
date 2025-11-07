@@ -26,13 +26,15 @@ import { FormDialog, type FormField } from "@/components/form-dialog";
 export interface Field {
   name: string;
   label: string;
-  type: "text" | "email" | "password" | "number" | "date" | "datetime-local";
+  type: "text" | "email" | "password" | "number" | "date" | "datetime-local" | "time" | "select";
   placeholder?: string;
   required?: boolean;
   validation?: (value: string) => string | true | null;
   section?: string;
   hint?: string;
   icon?: React.ReactNode;
+  options?: Array<{ label: string; value: string }>;
+  fetchOptions?: () => Promise<Array<{ label: string; value: string }>>;
 }
 
 interface CRUDLayoutProps<T = any> {
@@ -48,6 +50,9 @@ interface CRUDLayoutProps<T = any> {
   displayFields: string[]; // Campos a mostrar na tabela
   renderTableRow?: (item: T) => React.ReactNode;
   rowActions?: (item: T) => React.ReactNode;
+  canAdd?: boolean; // Mostrar botão "Adicionar"
+  canEdit?: boolean; // Mostrar botão "Editar"
+  canDelete?: boolean; // Mostrar botão "Deletar"
 }
 
 export function CRUDLayout<T = any>({
@@ -63,6 +68,9 @@ export function CRUDLayout<T = any>({
   displayFields,
   renderTableRow,
   rowActions,
+  canAdd = true,
+  canEdit = true,
+  canDelete = true,
 }: CRUDLayoutProps<T>) {
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
@@ -112,14 +120,21 @@ export function CRUDLayout<T = any>({
   };
 
   const handleSave = async () => {
-    if (!validateForm()) return;
+    console.log("🟠 [CRUD-LAYOUT] handleSave chamado");
+    
+    if (!validateForm()) {
+      console.error("❌ [CRUD-LAYOUT] Validação falhou, erros:", errors);
+      return;
+    }
 
     setSaving(true);
     try {
       if (editingId) {
+        console.log("🟡 [CRUD-LAYOUT] Editando item:", editingId, "dados:", formData);
         await onEdit(editingId, formData);
         setMessage({ type: "success", text: "Atualizado com sucesso!" });
       } else {
+        console.log("🟡 [CRUD-LAYOUT] Criando novo item com dados:", formData);
         await onAdd(formData);
         setMessage({ type: "success", text: "Criado com sucesso!" });
       }
@@ -129,6 +144,7 @@ export function CRUDLayout<T = any>({
         resetForm();
       }, 1500);
     } catch (error) {
+      console.error("🔴 [CRUD-LAYOUT] Erro:", error);
       setMessage({
         type: "error",
         text: error instanceof Error ? error.message : "Erro ao salvar",
@@ -172,17 +188,19 @@ export function CRUDLayout<T = any>({
           </div>
         </div>
 
-        <Button
-          onClick={() => {
-            setEditingId(null);
-            setFormData({});
-            handleOpenChange(true);
-          }}
-          className="gap-2 bg-primary hover:bg-primary/90 cursor-pointer shadow-md"
-        >
-          <Plus className="w-4 h-4" />
-          Adicionar Novo
-        </Button>
+        {canAdd && (
+          <Button
+            onClick={() => {
+              setEditingId(null);
+              setFormData({});
+              handleOpenChange(true);
+            }}
+            className="gap-2 bg-primary hover:bg-primary/90 cursor-pointer shadow-md"
+          >
+            <Plus className="w-4 h-4" />
+            Adicionar Novo
+          </Button>
+        )}
 
         <FormDialog
           open={open}
@@ -266,59 +284,65 @@ export function CRUDLayout<T = any>({
                     >
                       {displayFields.map((field) => (
                         <td key={field} className="py-3 px-4 text-foreground">
-                          {renderTableRow ? renderTableRow(item) : (item as any)[field]}
+                          {renderTableRow
+                            ? renderTableRow(item)
+                            : (item as any)[field]}
                         </td>
                       ))}
                       <td className="py-3 px-4 text-right">
                         <div className="flex justify-end gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleEdit(item)}
-                            className="gap-1 cursor-pointer"
-                          >
-                            <Pencil className="w-3 h-3" />
-                            Editar
-                          </Button>
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button
-                                variant="destructive"
-                                size="sm"
-                                className="gap-1 cursor-pointer"
-                              >
-                                <Trash2 className="w-3 h-3" />
-                                Deletar
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>
-                                  Você tem certeza?
-                                </AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  Esta ação não pode ser desfeita. O registro
-                                  será deletado permanentemente.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <div className="flex gap-3 justify-end">
-                                <AlertDialogCancel className="cursor-pointer">
-                                  Cancelar
-                                </AlertDialogCancel>
-                                <AlertDialogAction
-                                  onClick={() =>
-                                    handleDelete(
-                                      (item as any).id,
-                                      (item as any).nome || (item as any).codigo
-                                    )
-                                  }
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90 cursor-pointer"
+                          {canEdit && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleEdit(item)}
+                              className="gap-1 cursor-pointer"
+                            >
+                              <Pencil className="w-3 h-3" />
+                              Editar
+                            </Button>
+                          )}
+                          {canDelete && (
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  className="gap-1 cursor-pointer"
                                 >
+                                  <Trash2 className="w-3 h-3" />
                                   Deletar
-                                </AlertDialogAction>
-                              </div>
-                            </AlertDialogContent>
-                          </AlertDialog>
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>
+                                    Você tem certeza?
+                                  </AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Esta ação não pode ser desfeita. O registro
+                                    será deletado permanentemente.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <div className="flex gap-3 justify-end">
+                                  <AlertDialogCancel className="cursor-pointer">
+                                    Cancelar
+                                  </AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() =>
+                                      handleDelete(
+                                        (item as any).id,
+                                        (item as any).nome || (item as any).codigo
+                                      )
+                                    }
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90 cursor-pointer"
+                                  >
+                                    Deletar
+                                  </AlertDialogAction>
+                                </div>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          )}
                           {rowActions && rowActions(item)}
                         </div>
                       </td>

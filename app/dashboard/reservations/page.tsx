@@ -9,24 +9,37 @@ import {
   updateBooking,
   deleteBooking,
   type Booking,
+  type CreateBookingRequest,
+  listPassengers,
+  listFlights,
 } from "@/lib/api-client";
 import { BookOpen } from "lucide-react";
+import { usePermissions } from "@/hooks/use-permissions";
 
 export default function ReservationsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { canViewBookings, canCreateBookings, canManageBookings, hasRole } = usePermissions();
 
   useEffect(() => {
-    loadBookings();
+    if (canViewBookings()) {
+      loadBookings();
+    } else {
+      setError("Você não tem permissão para acessar reservas");
+      setLoading(false);
+    }
   }, []);
 
   const loadBookings = async () => {
     try {
       setLoading(true);
+      setError(null);
       const data = await listBookings();
       setBookings(data);
     } catch (error) {
       console.error("Error loading bookings:", error);
+      setError("Erro ao carregar reservas");
     } finally {
       setLoading(false);
     }
@@ -34,41 +47,76 @@ export default function ReservationsPage() {
 
   const fields: Field[] = [
     {
-      name: "passageiroId",
-      label: "ID do Passageiro",
+      name: "passengerId",
+      label: "Passageiro",
+      type: "select",
+      placeholder: "Selecione o passageiro",
+      required: true,
+      fetchOptions: () =>
+        listPassengers()
+          .then((passengers) =>
+            passengers.map((p) => ({
+              label: `${p.username} (${p.email})`,
+              value: p.id.toString(),
+            }))
+          )
+          .catch(() => []),
+    },
+    {
+      name: "flightId",
+      label: "Voo",
+      type: "select",
+      placeholder: "Selecione o voo",
+      required: true,
+      fetchOptions: () =>
+        listFlights()
+          .then((flights) =>
+            flights.map((f) => ({
+              label: `${f.departureDate} - ${f.originAirport.code} → ${f.destinationAirport.code}`,
+              value: f.id.toString(),
+            }))
+          )
+          .catch(() => []),
+    },
+    {
+      name: "purchaseDate",
+      label: "Data da Compra",
+      type: "date",
+      required: true,
+    },
+    {
+      name: "totalAmount",
+      label: "Valor Total",
       type: "number",
-      placeholder: "1",
+      placeholder: "0.00",
       required: true,
       validation: (value: string) =>
-        Number(value) > 0 ? true : "ID deve ser um número positivo",
+        Number(value) > 0 ? true : "Valor deve ser maior que 0",
     },
     {
-      name: "vooId",
-      label: "ID do Voo",
-      type: "number",
-      placeholder: "1",
-      required: true,
-      validation: (value: string) =>
-        Number(value) > 0 ? true : "ID deve ser um número positivo",
+      name: "paymentMethod",
+      label: "Método de Pagamento",
+      type: "select",
+      placeholder: "Selecione",
+      options: [
+        { label: "Cartão de Crédito", value: "CREDIT_CARD" },
+        { label: "Cartão de Débito", value: "DEBIT_CARD" },
+        { label: "Boleto", value: "BOLETO" },
+        { label: "Pix", value: "PIX" },
+      ],
+      required: false,
     },
     {
-      name: "assento",
-      label: "Assento",
-      type: "text",
-      placeholder: "12A",
-      required: true,
-      validation: (value: string) =>
-        /^[0-9]{1,3}[A-Z]$/.test(value)
-          ? true
-          : "Formato de assento inválido (ex: 12A)",
-    },
-    {
-      name: "dataReserva",
-      label: "Data da Reserva",
-      type: "datetime-local",
-      required: true,
-      validation: (value: string) =>
-        value.length > 0 ? true : "Data é obrigatória",
+      name: "paymentStatus",
+      label: "Status do Pagamento",
+      type: "select",
+      placeholder: "Selecione",
+      options: [
+        { label: "Pendente", value: "PENDING" },
+        { label: "Confirmado", value: "CONFIRMED" },
+        { label: "Cancelado", value: "CANCELLED" },
+      ],
+      required: false,
     },
   ];
 
@@ -83,35 +131,38 @@ export default function ReservationsPage() {
         fields={fields}
         data={bookings}
         loading={loading}
-        onAdd={async (data) => {
-          await createBooking({
-            passageiroId: Number(data.passageiroId),
-            vooId: Number(data.vooId),
-            assento: data.assento,
-            dataReserva: data.dataReserva,
-          });
+        canAdd={canCreateBookings()}
+        canEdit={canManageBookings()}
+        canDelete={canManageBookings()}
+        onAdd={async (data: any) => {
+          const bookingData: CreateBookingRequest = {
+            passengerId: Number(data.passengerId),
+            flightId: Number(data.flightId),
+            purchaseDate: data.purchaseDate,
+            totalAmount: Number(data.totalAmount),
+            paymentMethod: data.paymentMethod || "CREDIT_CARD",
+            paymentStatus: data.paymentStatus || "PENDING",
+          };
+          await createBooking(bookingData);
           loadBookings();
         }}
-        onEdit={async (id, data) => {
-          await updateBooking(id, {
-            passageiroId: Number(data.passageiroId),
-            vooId: Number(data.vooId),
-            assento: data.assento,
-            dataReserva: data.dataReserva,
-          });
+        onEdit={async (id, data: any) => {
+          const bookingData: Partial<CreateBookingRequest> = {
+            passengerId: Number(data.passengerId),
+            flightId: Number(data.flightId),
+            purchaseDate: data.purchaseDate,
+            totalAmount: Number(data.totalAmount),
+            paymentMethod: data.paymentMethod || "CREDIT_CARD",
+            paymentStatus: data.paymentStatus || "PENDING",
+          };
+          await updateBooking(id, bookingData);
           loadBookings();
         }}
         onDelete={async (id) => {
           await deleteBooking(id);
           loadBookings();
         }}
-        displayFields={[
-          "id",
-          "passageiroId",
-          "vooId",
-          "assento",
-          "dataReserva",
-        ]}
+        displayFields={["id", "purchaseDate", "totalAmount", "paymentStatus"]}
       />
     </DashboardLayout>
   );

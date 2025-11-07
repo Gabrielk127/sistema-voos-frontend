@@ -3,26 +3,71 @@
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Home, Plane, PlaneTakeoff, Building2, Users, Ticket, Briefcase, Settings, LogOut, Menu } from "lucide-react"
+import { Home, Plane, PlaneTakeoff, Building2, Users, Ticket, Briefcase, Settings, LogOut, Menu, BookOpen } from "lucide-react"
 import { useState } from "react"
 import { useAuth } from "@/hooks/use-auth"
+import { usePermissions } from "@/hooks/use-permissions"
 import { authLogout } from "@/lib/api-client"
 
-const menuItems = [
+interface MenuItem {
+  icon: any
+  label: string
+  href: string
+  requiredRoles?: Array<"ADMIN" | "MODERATOR" | "USER">
+}
+
+const menuItems: MenuItem[] = [
   { icon: Home, label: "Dashboard", href: "/dashboard" },
+  
+  // ---- VOOS (Público - todos veem) ----
   { icon: Plane, label: "Voos", href: "/dashboard/flights" },
-  { icon: PlaneTakeoff, label: "Aeronaves", href: "/dashboard/aircraft" },
-  { icon: Building2, label: "Aeroportos", href: "/dashboard/airports" },
-  { icon: Users, label: "Passageiros", href: "/dashboard/passengers" },
-  { icon: Ticket, label: "Reservas", href: "/dashboard/reservations" },
-  { icon: Briefcase, label: "Funcionários", href: "/dashboard/employees" },
+  
+  // ---- ADMIN ONLY ----
+  { icon: Plane, label: "Gerenciar Voos", href: "/dashboard/flights/manage", requiredRoles: ["ADMIN"] },
+  { icon: PlaneTakeoff, label: "Aeronaves", href: "/dashboard/aircraft", requiredRoles: ["ADMIN"] },
+  { icon: Building2, label: "Aeroportos", href: "/dashboard/airports", requiredRoles: ["ADMIN"] },
+  { icon: Users, label: "Passageiros", href: "/dashboard/passengers", requiredRoles: ["ADMIN", "MODERATOR"] },
+  { icon: Briefcase, label: "Funcionários", href: "/dashboard/employees", requiredRoles: ["ADMIN", "MODERATOR"] },
+  
+  // ---- MASTER DATA (ADMIN ONLY) ----
+  { 
+    icon: Plane, 
+    label: "Tipos de Aeronave", 
+    href: "/dashboard/aircraft-types", 
+    requiredRoles: ["ADMIN"] 
+  },
+  { 
+    icon: Briefcase, 
+    label: "Categorias de Funcionário", 
+    href: "/dashboard/employee-categories", 
+    requiredRoles: ["ADMIN"] 
+  },
+  { 
+    icon: Plane, 
+    label: "Tipos de Voo", 
+    href: "/dashboard/flight-types", 
+    requiredRoles: ["ADMIN"] 
+  },
+  { 
+    icon: Users, 
+    label: "Tripulação de Voo", 
+    href: "/dashboard/flight-crews", 
+    requiredRoles: ["ADMIN"] 
+  },
+  
+  // ---- TODOS AUTENTICADOS ----
+  { icon: Ticket, label: "Passagens", href: "/dashboard/tickets", requiredRoles: ["ADMIN", "MODERATOR", "USER"] },
+  { icon: BookOpen, label: "Reservas", href: "/dashboard/reservations", requiredRoles: ["ADMIN", "MODERATOR", "USER"] },
+  
+  // ---- SETTINGS ----
   { icon: Settings, label: "Configurações", href: "/dashboard/settings" },
 ]
 
 export function DashboardSidebar() {
   const pathname = usePathname()
   const [open, setOpen] = useState(true)
-  const { logout } = useAuth()
+  const { logout, user } = useAuth()
+  const { hasRole } = usePermissions()
 
   const handleLogout = async () => {
     try {
@@ -33,6 +78,14 @@ export function DashboardSidebar() {
       logout()
     }
   }
+
+  // Filtrar itens do menu baseado no role do usuário
+  const visibleMenuItems = menuItems.filter((item) => {
+    if (!item.requiredRoles) {
+      return true // Item sem restrição é visível para todos
+    }
+    return hasRole(item.requiredRoles as any)
+  })
 
   return (
     <>
@@ -60,9 +113,19 @@ export function DashboardSidebar() {
             </Link>
           </div>
 
+          {/* User Info */}
+          <div className="px-6 py-4 border-b border-sidebar-border">
+            <p className="text-sm font-medium text-sidebar-foreground">{user?.email}</p>
+            <p className="text-xs text-sidebar-foreground/60 mt-1">
+              {user?.role === "ADMIN" && "Administrador"}
+              {user?.role === "MODERATOR" && "Moderador"}
+              {user?.role === "USER" && "Usuário"}
+            </p>
+          </div>
+
           {/* Navigation */}
           <nav className="flex-1 px-3 py-6 space-y-2 overflow-y-auto">
-            {menuItems.map((item) => (
+            {visibleMenuItems.map((item) => (
               <Link key={item.href} href={item.href}>
                 <Button
                   variant={pathname === item.href ? "default" : "ghost"}

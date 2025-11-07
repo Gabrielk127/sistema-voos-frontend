@@ -9,12 +9,18 @@ import {
   updateFlight,
   deleteFlight,
   type Flight,
+  type CreateFlightRequest,
+  listFlightTypes,
+  listAircraftTypes,
+  listAirports,
 } from "@/lib/api-client";
 import { Plane as PlaneIcon } from "lucide-react";
+import { usePermissions } from "@/hooks/use-permissions";
 
 export default function FlightsPage() {
   const [flights, setFlights] = useState<Flight[]>([]);
   const [loading, setLoading] = useState(true);
+  const { canManageFlights } = usePermissions();
 
   useEffect(() => {
     loadFlights();
@@ -34,76 +40,97 @@ export default function FlightsPage() {
 
   const fields: Field[] = [
     {
-      name: "codigo",
-      label: "Código",
-      type: "text",
-      placeholder: "AA123",
+      name: "idFlightType",
+      label: "Tipo de Voo",
+      type: "select",
+      placeholder: "Selecione o tipo",
       required: true,
-      validation: (value: string) =>
-        /^[A-Z]{2}\d{3,4}$/.test(value)
-          ? true
-          : "Código deve ser formato AA123",
+      fetchOptions: () =>
+        listFlightTypes().then((types) =>
+          types.map((t) => ({ label: t.type, value: t.id.toString() }))
+        ),
     },
     {
-      name: "aeronaveId",
-      label: "ID da Aeronave",
-      type: "number",
-      placeholder: "1",
+      name: "idAircraftType",
+      label: "Tipo de Aeronave",
+      type: "select",
+      placeholder: "Selecione a aeronave",
       required: true,
-      validation: (value: string) =>
-        Number(value) > 0 ? true : "ID deve ser um número positivo",
+      fetchOptions: () =>
+        listAircraftTypes().then((types) =>
+          types.map((t) => ({ label: `${t.type}`, value: t.id.toString() }))
+        ),
     },
     {
-      name: "aeroportoOrigemId",
-      label: "ID Aeroporto Origem",
-      type: "number",
-      placeholder: "1",
+      name: "idOriginAirport",
+      label: "Aeroporto de Origem",
+      type: "select",
+      placeholder: "Selecione origem",
       required: true,
-      validation: (value: string) =>
-        Number(value) > 0 ? true : "ID deve ser um número positivo",
+      fetchOptions: () =>
+        listAirports().then((airports) =>
+          airports.map((a) => ({
+            label: `${a.code} - ${a.name}`,
+            value: a.id.toString(),
+          }))
+        ),
     },
     {
-      name: "aeroportoDestinoId",
-      label: "ID Aeroporto Destino",
-      type: "number",
-      placeholder: "2",
+      name: "idDestinationAirport",
+      label: "Aeroporto de Destino",
+      type: "select",
+      placeholder: "Selecione destino",
       required: true,
-      validation: (value: string) =>
-        Number(value) > 0 ? true : "ID deve ser um número positivo",
+      fetchOptions: () =>
+        listAirports().then((airports) =>
+          airports.map((a) => ({
+            label: `${a.code} - ${a.name}`,
+            value: a.id.toString(),
+          }))
+        ),
     },
     {
-      name: "dataPartida",
-      label: "Data Partida",
-      type: "datetime-local",
+      name: "departureDate",
+      label: "Data de Partida",
+      type: "date",
       required: true,
-      validation: (value: string) =>
-        new Date(value) > new Date() ? true : "Data deve ser no futuro",
     },
     {
-      name: "dataChegada",
-      label: "Data Chegada",
-      type: "datetime-local",
+      name: "scheduledDepartureTime",
+      label: "Hora de Partida",
+      type: "time",
       required: true,
-      validation: (value: string) =>
-        value.length > 0 ? true : "Data é obrigatória",
     },
     {
-      name: "preco",
-      label: "Preço",
-      type: "number",
-      placeholder: "500",
+      name: "arrivalDate",
+      label: "Data de Chegada",
+      type: "date",
       required: true,
-      validation: (value: string) =>
-        Number(value) > 0 ? true : "Preço deve ser maior que 0",
     },
     {
-      name: "assentosDisponiveis",
-      label: "Assentos Disponíveis",
-      type: "number",
-      placeholder: "180",
+      name: "scheduledArrivalTime",
+      label: "Hora de Chegada",
+      type: "time",
       required: true,
-      validation: (value: string) =>
-        Number(value) > 0 ? true : "Assentos deve ser um número positivo",
+    },
+    {
+      name: "scheduledDurationMin",
+      label: "Duração (hh:mm:ss)",
+      type: "time",
+      required: true,
+    },
+    {
+      name: "status",
+      label: "Status",
+      type: "select",
+      placeholder: "Selecione status",
+      options: [
+        { label: "Agendado", value: "SCHEDULED" },
+        { label: "Em Progresso", value: "IN_PROGRESS" },
+        { label: "Concluído", value: "COMPLETED" },
+        { label: "Cancelado", value: "CANCELLED" },
+      ],
+      required: false,
     },
   ];
 
@@ -116,44 +143,75 @@ export default function FlightsPage() {
         fields={fields}
         data={flights}
         loading={loading}
-        onAdd={async (data) => {
-          await createFlight({
-            codigo: data.codigo,
-            aeronaveId: Number(data.aeronaveId),
-            aeroportoOrigemId: Number(data.aeroportoOrigemId),
-            aeroportoDestinoId: Number(data.aeroportoDestinoId),
-            dataPartida: data.dataPartida,
-            dataChegada: data.dataChegada,
-            preco: Number(data.preco),
-            assentosDisponiveis: Number(data.assentosDisponiveis),
-          });
-          loadFlights();
+        canAdd={canManageFlights()}
+        canEdit={canManageFlights()}
+        canDelete={canManageFlights()}
+        onAdd={async (data: any) => {
+          console.log("🔷 [FLIGHTS] Iniciando criação com dados:", data);
+          
+          if (!canManageFlights()) {
+            alert("Você não tem permissão para criar voos");
+            return;
+          }
+          
+          const flightData: CreateFlightRequest = {
+            idFlightType: Number(data.idFlightType),
+            idAircraftType: Number(data.idAircraftType),
+            idOriginAirport: Number(data.idOriginAirport),
+            idDestinationAirport: Number(data.idDestinationAirport),
+            departureDate: data.departureDate,
+            scheduledDepartureTime: data.scheduledDepartureTime,
+            arrivalDate: data.arrivalDate,
+            scheduledArrivalTime: data.scheduledArrivalTime,
+            scheduledDurationMin: data.scheduledDurationMin,
+            status: data.status || "SCHEDULED",
+          };
+          
+          console.log("🔷 [FLIGHTS] Dados formatados para enviar:", flightData);
+          
+          try {
+            const result = await createFlight(flightData);
+            console.log("🟢 [FLIGHTS] Voo criado com sucesso:", result);
+            await loadFlights();
+          } catch (error) {
+            console.error("🔴 [FLIGHTS] Erro ao criar voo:", error);
+            throw error;
+          }
         }}
-        onEdit={async (id, data) => {
-          await updateFlight(id, {
-            codigo: data.codigo,
-            aeronaveId: Number(data.aeronaveId),
-            aeroportoOrigemId: Number(data.aeroportoOrigemId),
-            aeroportoDestinoId: Number(data.aeroportoDestinoId),
-            dataPartida: data.dataPartida,
-            dataChegada: data.dataChegada,
-            preco: Number(data.preco),
-            assentosDisponiveis: Number(data.assentosDisponiveis),
-          });
+        onEdit={async (id, data: any) => {
+          if (!canManageFlights()) {
+            alert("Você não tem permissão para editar voos");
+            return;
+          }
+          const flightData: Partial<CreateFlightRequest> = {
+            idFlightType: Number(data.idFlightType),
+            idAircraftType: Number(data.idAircraftType),
+            idOriginAirport: Number(data.idOriginAirport),
+            idDestinationAirport: Number(data.idDestinationAirport),
+            departureDate: data.departureDate,
+            scheduledDepartureTime: data.scheduledDepartureTime,
+            arrivalDate: data.arrivalDate,
+            scheduledArrivalTime: data.scheduledArrivalTime,
+            scheduledDurationMin: data.scheduledDurationMin,
+            status: data.status || "SCHEDULED",
+          };
+          await updateFlight(id, flightData);
           loadFlights();
         }}
         onDelete={async (id) => {
+          if (!canManageFlights()) {
+            alert("Você não tem permissão para deletar voos");
+            return;
+          }
           await deleteFlight(id);
           loadFlights();
         }}
         displayFields={[
           "id",
-          "codigo",
-          "aeroportoOrigemId",
-          "aeroportoDestinoId",
-          "dataPartida",
-          "preco",
-          "assentosDisponiveis",
+          "departureDate",
+          "scheduledDepartureTime",
+          "arrivalDate",
+          "status",
         ]}
       />
     </DashboardLayout>
