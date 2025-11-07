@@ -19,7 +19,14 @@ export default function TicketsPage() {
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { canViewTickets, canCreateTickets, canManageTickets, hasRole } = usePermissions();
+  const {
+    canViewTickets,
+    canCreateTickets,
+    canEditTickets,
+    canDeleteTickets,
+    hasRole,
+  } = usePermissions();
+  usePermissions();
 
   useEffect(() => {
     if (canViewTickets()) {
@@ -102,10 +109,10 @@ export default function TicketsPage() {
         data={tickets}
         loading={loading}
         canAdd={canCreateTickets()}
-        canEdit={canManageTickets()}
-        canDelete={canManageTickets()}
+        canEdit={canEditTickets()}
+        canDelete={canDeleteTickets()}
         onAdd={async (data: any) => {
-          if (!canManageTickets()) {
+          if (!canCreateTickets()) {
             alert("Você não tem permissão para criar passagens");
             return;
           }
@@ -113,14 +120,13 @@ export default function TicketsPage() {
             bookingId: Number(data.bookingId),
             passengerName: data.passengerName as string,
             seatNumber: Number(data.seatNumber),
-            checkInCompleted:
-              data.checkInCompleted === "true" ? true : false,
+            checkInCompleted: data.checkInCompleted === "true" ? true : false,
           };
           await createTicket(ticketData);
           loadTickets();
         }}
         onEdit={async (id, data: any) => {
-          if (!canManageTickets()) {
+          if (!canEditTickets()) {
             alert("Você não tem permissão para editar passagens");
             return;
           }
@@ -128,14 +134,13 @@ export default function TicketsPage() {
             bookingId: Number(data.bookingId),
             passengerName: data.passengerName as string,
             seatNumber: Number(data.seatNumber),
-            checkInCompleted:
-              data.checkInCompleted === "true" ? true : false,
+            checkInCompleted: data.checkInCompleted === "true" ? true : false,
           };
           await updateTicket(id, ticketData);
           loadTickets();
         }}
         onDelete={async (id) => {
-          if (!canManageTickets()) {
+          if (!canDeleteTickets()) {
             alert("Você não tem permissão para deletar passagens");
             return;
           }
@@ -148,6 +153,12 @@ export default function TicketsPage() {
           "seatNumber",
           "checkInCompleted",
         ]}
+        fieldLabels={{
+          id: "ID",
+          passengerName: "Nome do Passageiro",
+          seatNumber: "Número do Assento",
+          checkInCompleted: "Check-in Realizado",
+        }}
       />
     </DashboardLayout>
   );

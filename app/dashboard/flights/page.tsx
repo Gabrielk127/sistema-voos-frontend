@@ -20,19 +20,33 @@ import { usePermissions } from "@/hooks/use-permissions";
 export default function FlightsPage() {
   const [flights, setFlights] = useState<Flight[]>([]);
   const [loading, setLoading] = useState(true);
-  const { canManageFlights } = usePermissions();
+  const { canCreateFlights, canEditFlights, canDeleteFlights } =
+    usePermissions();
+
+  const getStatusDisplay = (status: string): string => {
+    const statusMap: Record<string, string> = {
+      SCHEDULED: "Agendado",
+      IN_PROGRESS: "Em Progresso",
+      COMPLETED: "Concluído",
+      CANCELLED: "Cancelado",
+    };
+    return statusMap[status] || status;
+  };
 
   useEffect(() => {
+    console.log("[FLIGHTS] Página montada, iniciando carregamento...");
     loadFlights();
   }, []);
 
   const loadFlights = async () => {
     try {
       setLoading(true);
+      console.log("[FLIGHTS] Iniciando listFlights()...");
       const data = await listFlights();
+      console.log("[FLIGHTS] Dados carregados:", data.length, "voos");
       setFlights(data);
     } catch (error) {
-      console.error("Error loading flights:", error);
+      console.error("[FLIGHTS] Erro ao carregar voos:", error);
     } finally {
       setLoading(false);
     }
@@ -143,17 +157,16 @@ export default function FlightsPage() {
         fields={fields}
         data={flights}
         loading={loading}
-        canAdd={canManageFlights()}
-        canEdit={canManageFlights()}
-        canDelete={canManageFlights()}
+        canAdd={canCreateFlights()}
+        canEdit={canEditFlights()}
+        canDelete={canDeleteFlights()}
         onAdd={async (data: any) => {
           console.log("🔷 [FLIGHTS] Iniciando criação com dados:", data);
-          
-          if (!canManageFlights()) {
+
+          if (!canCreateFlights()) {
             alert("Você não tem permissão para criar voos");
             return;
           }
-          
           const flightData: CreateFlightRequest = {
             idFlightType: Number(data.idFlightType),
             idAircraftType: Number(data.idAircraftType),
@@ -166,9 +179,9 @@ export default function FlightsPage() {
             scheduledDurationMin: data.scheduledDurationMin,
             status: data.status || "SCHEDULED",
           };
-          
+
           console.log("🔷 [FLIGHTS] Dados formatados para enviar:", flightData);
-          
+
           try {
             const result = await createFlight(flightData);
             console.log("🟢 [FLIGHTS] Voo criado com sucesso:", result);
@@ -179,7 +192,7 @@ export default function FlightsPage() {
           }
         }}
         onEdit={async (id, data: any) => {
-          if (!canManageFlights()) {
+          if (!canEditFlights()) {
             alert("Você não tem permissão para editar voos");
             return;
           }
@@ -199,7 +212,7 @@ export default function FlightsPage() {
           loadFlights();
         }}
         onDelete={async (id) => {
-          if (!canManageFlights()) {
+          if (!canDeleteFlights()) {
             alert("Você não tem permissão para deletar voos");
             return;
           }
@@ -213,6 +226,13 @@ export default function FlightsPage() {
           "arrivalDate",
           "status",
         ]}
+        fieldLabels={{
+          id: "ID",
+          departureDate: "Data de Partida",
+          scheduledDepartureTime: "Hora de Partida",
+          arrivalDate: "Data de Chegada",
+          status: "Status",
+        }}
       />
     </DashboardLayout>
   );

@@ -62,23 +62,26 @@ export default function LoginPage() {
       // Store user info
       const roleString = response.roles?.[0] || "ROLE_USER";
       let role: "ADMIN" | "MODERATOR" | "USER" = "USER";
-      
+
       if (roleString.includes("ADMIN")) {
         role = "ADMIN";
       } else if (roleString.includes("MODERATOR")) {
         role = "MODERATOR";
       }
-      
+
       const user = {
         id: response.id.toString(),
         email: response.email,
         username: response.username,
         role,
       };
-      
+
       console.log("Login successful - User:", user);
-      console.log("Access Token saved:", response.accessToken.substring(0, 20) + "...");
-      
+      console.log(
+        "Access Token saved:",
+        response.accessToken.substring(0, 20) + "..."
+      );
+
       localStorage.setItem("user", JSON.stringify(user));
       localStorage.setItem("isAuthenticated", "true");
 

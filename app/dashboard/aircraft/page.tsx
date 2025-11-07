@@ -2,31 +2,24 @@
 
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/dashboard-layout";
-import { CRUDLayout, type Field } from "@/components/crud-layout";
+import { CRUDLayoutSimple, type Field } from "@/components/crud-layout-simple";
 import {
   listAircraft,
   createAircraft,
   updateAircraft,
   deleteAircraft,
   type Aircraft,
-  type CreateAircraftRequest,
-  listAircraftTypes,
 } from "@/lib/api-client";
 import { Plane } from "lucide-react";
 import { usePermissions } from "@/hooks/use-permissions";
-import { useRouter } from "next/navigation";
 
 export default function AircraftPage() {
   const [aircraft, setAircraft] = useState<Aircraft[]>([]);
   const [loading, setLoading] = useState(true);
-  const { canManageFlights } = usePermissions();
-  const router = useRouter();
+  const { canCreateAircraft, canEditAircraft, canDeleteAircraft } =
+    usePermissions();
 
   useEffect(() => {
-    if (!canManageFlights()) {
-      router.push("/dashboard");
-      return;
-    }
     loadAircraft();
   }, []);
 
@@ -44,29 +37,11 @@ export default function AircraftPage() {
 
   const fields: Field[] = [
     {
-      name: "aircraftTypeId",
-      label: "Tipo de Aeronave",
-      type: "select",
-      placeholder: "Selecione o tipo",
-      required: true,
-      fetchOptions: () =>
-        listAircraftTypes().then((types) =>
-          types.map((t) => ({
-            label: `${t.code} - ${t.name}`,
-            value: t.id.toString(),
-          }))
-        ),
-    },
-    {
       name: "registration",
       label: "Matrícula",
       type: "text",
-      placeholder: "PT-AAA",
+      placeholder: "PT-ABC",
       required: true,
-      validation: (value: string) =>
-        /^[A-Z]{2}-[A-Z]{3}$/.test(value) || /^[A-Z]{5}$/.test(value)
-          ? true
-          : "Matrícula inválida (ex: PT-AAA ou PTAAA)",
     },
   ];
 
@@ -74,35 +49,40 @@ export default function AircraftPage() {
     <DashboardLayout
       breadcrumbs={[{ label: "Dashboard" }, { label: "Aeronaves" }]}
     >
-      <CRUDLayout
+      <CRUDLayoutSimple
         title="Gerenciamento de Aeronaves"
         description="Administre as aeronaves da frota"
         icon={<Plane className="w-6 h-6" />}
         fields={fields}
         data={aircraft}
         loading={loading}
-        canAdd={canManageFlights()}
-        canEdit={canManageFlights()}
-        canDelete={canManageFlights()}
         onAdd={async (data: any) => {
-          const aircraftData: CreateAircraftRequest = {
-            aircraftTypeId: Number(data.aircraftTypeId),
+          if (!canCreateAircraft()) {
+            alert("Você não tem permissão");
+            return;
+          }
+          await createAircraft({
             registration: data.registration,
-          };
-          await createAircraft(aircraftData);
-          loadAircraft();
+          });
+          await loadAircraft();
         }}
-        onEdit={async (id, data: any) => {
-          const aircraftData: Partial<CreateAircraftRequest> = {
-            aircraftTypeId: Number(data.aircraftTypeId),
+        onEdit={async (id: number, data: any) => {
+          if (!canEditAircraft()) {
+            alert("Você não tem permissão");
+            return;
+          }
+          await updateAircraft(id, {
             registration: data.registration,
-          };
-          await updateAircraft(id, aircraftData);
-          loadAircraft();
+          });
+          await loadAircraft();
         }}
-        onDelete={async (id) => {
+        onDelete={async (id: number) => {
+          if (!canDeleteAircraft()) {
+            alert("Você não tem permissão");
+            return;
+          }
           await deleteAircraft(id);
-          loadAircraft();
+          await loadAircraft();
         }}
         displayFields={["id", "registration"]}
       />

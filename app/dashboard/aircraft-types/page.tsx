@@ -16,7 +16,11 @@ import { usePermissions } from "@/hooks/use-permissions";
 export default function AircraftTypesPage() {
   const [types, setTypes] = useState<AircraftType[]>([]);
   const [loading, setLoading] = useState(true);
-  const { canManageFlights } = usePermissions();
+  const {
+    canCreateAircraftTypes,
+    canEditAircraftTypes,
+    canDeleteAircraftTypes,
+  } = usePermissions();
 
   useEffect(() => {
     loadTypes();
@@ -90,10 +94,7 @@ export default function AircraftTypesPage() {
 
   return (
     <DashboardLayout
-      breadcrumbs={[
-        { label: "Dashboard" },
-        { label: "Tipos de Aeronave" },
-      ]}
+      breadcrumbs={[{ label: "Dashboard" }, { label: "Tipos de Aeronave" }]}
     >
       <CRUDLayout
         title="Gerenciamento de Tipos de Aeronave"
@@ -103,7 +104,7 @@ export default function AircraftTypesPage() {
         data={types}
         loading={loading}
         onAdd={async (data: any) => {
-          if (!canManageFlights()) {
+          if (!canCreateAircraftTypes()) {
             alert("Você não tem permissão para criar tipos de aeronave");
             return;
           }
@@ -126,7 +127,7 @@ export default function AircraftTypesPage() {
           loadTypes();
         }}
         onEdit={async (id, data: any) => {
-          if (!canManageFlights()) {
+          if (!canEditAircraftTypes()) {
             alert("Você não tem permissão para editar tipos de aeronave");
             return;
           }
@@ -149,7 +150,7 @@ export default function AircraftTypesPage() {
           loadTypes();
         }}
         onDelete={async (id) => {
-          if (!canManageFlights()) {
+          if (!canDeleteAircraftTypes()) {
             alert("Você não tem permissão para deletar tipos de aeronave");
             return;
           }

@@ -73,6 +73,19 @@ export function FormDialog({
     text: string;
   } | null>(null);
 
+  // Sincronizar formData quando initialData mudar (apenas quando editing)
+  useEffect(() => {
+    if (isEditing) {
+      console.log(
+        "[FORM-DIALOG] 📝 Editando - sincronizando initialData:",
+        initialData
+      );
+      setFormData(initialData);
+    } else {
+      console.log("[FORM-DIALOG] ➕ Criando novo - mantendo formData atual");
+    }
+  }, [initialData, isEditing]);
+
   // Agrupar campos por seção
   const sections = Array.from(
     new Set(fields.map((f) => f.section || "Informações"))
@@ -83,42 +96,25 @@ export function FormDialog({
   }));
 
   const validateForm = () => {
-    const newErrors: Record<string, string> = {};
-
-    for (const field of fields) {
-      const value = formData[field.name]?.toString() || "";
-
-      if (field.required && !value) {
-        newErrors[field.name] = `${field.label} é obrigatório`;
-        continue;
-      }
-
-      if (field.validation && value) {
-        const error = field.validation(value);
-        if (error && error !== true) {
-          newErrors[field.name] = error;
-        }
-      }
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    // Validação desativada
+    return true;
   };
 
   const handleSave = async () => {
-    console.log("🟡 [FORM-DIALOG] handleSave chamado com dados:", formData);
-    
-    if (!validateForm()) {
-      console.error("❌ [FORM-DIALOG] Validação falhou, erros:", errors);
-      return;
-    }
+    console.log("🟡 [FORM-DIALOG] handleSave chamado");
+    console.log(
+      "🟡 [FORM-DIALOG] formData current:",
+      JSON.stringify(formData, null, 2)
+    );
+    console.log("🟡 [FORM-DIALOG] formData keys:", Object.keys(formData));
+    console.log("🟡 [FORM-DIALOG] formData values:", Object.values(formData));
 
     try {
       setSaving(true);
       console.log("🟡 [FORM-DIALOG] Iniciando onSave com:", formData);
       await onSave(formData);
       console.log("🟢 [FORM-DIALOG] onSave completado com sucesso");
-      
+
       setMessage({
         type: "success",
         text: isEditing ? "Alterado com sucesso!" : "Criado com sucesso!",
@@ -311,12 +307,27 @@ function FieldsGroup({
     // Carregar opções para selects
     fields.forEach((field) => {
       if (field.type === "select" && field.fetchOptions) {
-        field.fetchOptions().then((options) => {
-          setSelectOptions((prev) => ({
-            ...prev,
-            [field.name]: options,
-          }));
-        });
+        console.log(
+          `[FORM-DIALOG] Carregando opções para campo: ${field.name}`
+        );
+        field
+          .fetchOptions()
+          .then((options) => {
+            console.log(
+              `[FORM-DIALOG] Opções carregadas para ${field.name}:`,
+              options
+            );
+            setSelectOptions((prev) => ({
+              ...prev,
+              [field.name]: options,
+            }));
+          })
+          .catch((err) => {
+            console.error(
+              `[FORM-DIALOG] Erro ao carregar opções para ${field.name}:`,
+              err
+            );
+          });
       }
     });
   }, [fields]);
@@ -341,7 +352,13 @@ function FieldsGroup({
               <select
                 id={field.name}
                 value={formData[field.name] || ""}
-                onChange={(e) => onFieldChange(field.name, e.target.value)}
+                onChange={(e) => {
+                  console.log(
+                    `[FORM-DIALOG] Campo ${field.name} alterado para:`,
+                    e.target.value
+                  );
+                  onFieldChange(field.name, e.target.value);
+                }}
                 disabled={saving}
                 className={`
                   w-full px-3 py-2 border rounded-md text-sm

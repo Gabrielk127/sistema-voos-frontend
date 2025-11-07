@@ -19,7 +19,12 @@ import { usePermissions } from "@/hooks/use-permissions";
 export default function FlightCrewsPage() {
   const [crews, setCrews] = useState<FlightCrew[]>([]);
   const [loading, setLoading] = useState(true);
-  const { canManageFlights } = usePermissions();
+  const {
+    canViewFlightCrews,
+    canCreateFlightCrews,
+    canEditFlightCrews,
+    canDeleteFlightCrews,
+  } = usePermissions();
 
   useEffect(() => {
     loadCrews();
@@ -83,10 +88,7 @@ export default function FlightCrewsPage() {
 
   return (
     <DashboardLayout
-      breadcrumbs={[
-        { label: "Dashboard" },
-        { label: "Tripulação de Voo" },
-      ]}
+      breadcrumbs={[{ label: "Dashboard" }, { label: "Tripulação de Voo" }]}
     >
       <CRUDLayout
         title="Gerenciamento de Tripulação de Voo"
@@ -96,7 +98,7 @@ export default function FlightCrewsPage() {
         data={crews}
         loading={loading}
         onAdd={async (data: any) => {
-          if (!canManageFlights()) {
+          if (!canCreateFlightCrews()) {
             alert("Você não tem permissão para criar tripulação");
             return;
           }
@@ -109,7 +111,7 @@ export default function FlightCrewsPage() {
           loadCrews();
         }}
         onEdit={async (id, data: any) => {
-          if (!canManageFlights()) {
+          if (!canEditFlightCrews()) {
             alert("Você não tem permissão para editar tripulação");
             return;
           }
@@ -122,7 +124,7 @@ export default function FlightCrewsPage() {
           loadCrews();
         }}
         onDelete={async (id) => {
-          if (!canManageFlights()) {
+          if (!canDeleteFlightCrews()) {
             alert("Você não tem permissão para deletar tripulação");
             return;
           }

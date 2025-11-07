@@ -20,7 +20,14 @@ export default function ReservationsPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const { canViewBookings, canCreateBookings, canManageBookings, hasRole } = usePermissions();
+  const {
+    canViewBookings,
+    canCreateBookings,
+    canEditBookings,
+    canDeleteBookings,
+    hasRole,
+  } = usePermissions();
+  usePermissions();
 
   useEffect(() => {
     if (canViewBookings()) {
@@ -132,9 +139,13 @@ export default function ReservationsPage() {
         data={bookings}
         loading={loading}
         canAdd={canCreateBookings()}
-        canEdit={canManageBookings()}
-        canDelete={canManageBookings()}
+        canEdit={canEditBookings()}
+        canDelete={canDeleteBookings()}
         onAdd={async (data: any) => {
+          if (!canCreateBookings()) {
+            alert("Você não tem permissão para criar reservas");
+            return;
+          }
           const bookingData: CreateBookingRequest = {
             passengerId: Number(data.passengerId),
             flightId: Number(data.flightId),
@@ -147,6 +158,10 @@ export default function ReservationsPage() {
           loadBookings();
         }}
         onEdit={async (id, data: any) => {
+          if (!canEditBookings()) {
+            alert("Você não tem permissão para editar reservas");
+            return;
+          }
           const bookingData: Partial<CreateBookingRequest> = {
             passengerId: Number(data.passengerId),
             flightId: Number(data.flightId),
@@ -159,10 +174,20 @@ export default function ReservationsPage() {
           loadBookings();
         }}
         onDelete={async (id) => {
+          if (!canDeleteBookings()) {
+            alert("Você não tem permissão para deletar reservas");
+            return;
+          }
           await deleteBooking(id);
           loadBookings();
         }}
         displayFields={["id", "purchaseDate", "totalAmount", "paymentStatus"]}
+        fieldLabels={{
+          id: "ID",
+          purchaseDate: "Data da Compra",
+          totalAmount: "Valor Total",
+          paymentStatus: "Status do Pagamento",
+        }}
       />
     </DashboardLayout>
   );

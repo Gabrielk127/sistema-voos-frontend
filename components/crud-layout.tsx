@@ -26,7 +26,15 @@ import { FormDialog, type FormField } from "@/components/form-dialog";
 export interface Field {
   name: string;
   label: string;
-  type: "text" | "email" | "password" | "number" | "date" | "datetime-local" | "time" | "select";
+  type:
+    | "text"
+    | "email"
+    | "password"
+    | "number"
+    | "date"
+    | "datetime-local"
+    | "time"
+    | "select";
   placeholder?: string;
   required?: boolean;
   validation?: (value: string) => string | true | null;
@@ -48,6 +56,7 @@ interface CRUDLayoutProps<T = any> {
   onEdit: (id: number, data: T) => Promise<void>;
   onDelete: (id: number) => Promise<void>;
   displayFields: string[]; // Campos a mostrar na tabela
+  fieldLabels?: Record<string, string>; // Mapa de nomes das colunas em português
   renderTableRow?: (item: T) => React.ReactNode;
   rowActions?: (item: T) => React.ReactNode;
   canAdd?: boolean; // Mostrar botão "Adicionar"
@@ -66,6 +75,7 @@ export function CRUDLayout<T = any>({
   onEdit,
   onDelete,
   displayFields,
+  fieldLabels = {},
   renderTableRow,
   rowActions,
   canAdd = true,
@@ -83,7 +93,12 @@ export function CRUDLayout<T = any>({
   } | null>(null);
 
   const resetForm = () => {
-    setFormData({});
+    // Inicializar formData com todos os campos vazios
+    const emptyData: Record<string, any> = {};
+    fields.forEach((field) => {
+      emptyData[field.name] = "";
+    });
+    setFormData(emptyData);
     setErrors({});
     setEditingId(null);
     setMessage(null);
@@ -96,45 +111,61 @@ export function CRUDLayout<T = any>({
     setOpen(newOpen);
   };
 
-  const validateForm = (): boolean => {
-    const newErrors: Record<string, string> = {};
-
-    for (const field of fields) {
-      const value = formData[field.name] || "";
-
-      if (field.required && !value) {
-        newErrors[field.name] = `${field.label} é obrigatório`;
-        continue;
-      }
-
-      if (field.validation && value) {
-        const error = field.validation(value);
-        if (error && error !== true) {
-          newErrors[field.name] = error;
-        }
-      }
+  const getDisplayValue = (field: string, value: any): any => {
+    // Transformar status em português
+    if (field === "status") {
+      const statusMap: Record<string, string> = {
+        SCHEDULED: "Agendado",
+        IN_PROGRESS: "Em Progresso",
+        COMPLETED: "Concluído",
+        CANCELLED: "Cancelado",
+      };
+      return statusMap[value] || value;
     }
 
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    // Evitar exibir undefined ou null
+    if (value === undefined) {
+      console.warn(`[CRUD-LAYOUT] Valor undefined para campo: ${field}`);
+      return "---";
+    }
+    if (value === null) {
+      return "---";
+    }
+
+    return value;
   };
 
   const handleSave = async () => {
     console.log("🟠 [CRUD-LAYOUT] handleSave chamado");
-    
-    if (!validateForm()) {
-      console.error("❌ [CRUD-LAYOUT] Validação falhou, erros:", errors);
-      return;
-    }
+    console.log(
+      "🟠 [CRUD-LAYOUT] formData:",
+      JSON.stringify(formData, null, 2)
+    );
+    console.log("🟠 [CRUD-LAYOUT] formData keys:", Object.keys(formData));
+    console.log(
+      "🟠 [CRUD-LAYOUT] Campos esperados:",
+      fields.map((f) => f.name)
+    );
 
     setSaving(true);
     try {
       if (editingId) {
-        console.log("🟡 [CRUD-LAYOUT] Editando item:", editingId, "dados:", formData);
+        console.log(
+          "🟡 [CRUD-LAYOUT] Editando item:",
+          editingId,
+          "dados:",
+          formData
+        );
         await onEdit(editingId, formData);
         setMessage({ type: "success", text: "Atualizado com sucesso!" });
       } else {
         console.log("🟡 [CRUD-LAYOUT] Criando novo item com dados:", formData);
+        console.log(
+          "🟡 [CRUD-LAYOUT] Campos do formulário:",
+          Object.entries(formData)
+            .map(([k, v]) => `${k}=${v}`)
+            .join(", ")
+        );
         await onAdd(formData);
         setMessage({ type: "success", text: "Criado com sucesso!" });
       }
@@ -192,7 +223,12 @@ export function CRUDLayout<T = any>({
           <Button
             onClick={() => {
               setEditingId(null);
-              setFormData({});
+              // Inicializar formData com todos os campos vazios
+              const emptyData: Record<string, any> = {};
+              fields.forEach((field) => {
+                emptyData[field.name] = "";
+              });
+              setFormData(emptyData);
               handleOpenChange(true);
             }}
             className="gap-2 bg-primary hover:bg-primary/90 cursor-pointer shadow-md"
@@ -231,7 +267,8 @@ export function CRUDLayout<T = any>({
                       key={field}
                       className="text-left py-3 px-4 font-semibold text-muted-foreground"
                     >
-                      {field.charAt(0).toUpperCase() + field.slice(1)}
+                      {fieldLabels[field] ||
+                        field.charAt(0).toUpperCase() + field.slice(1)}
                     </th>
                   ))}
                   <th className="text-right py-3 px-4 font-semibold text-muted-foreground">
@@ -277,77 +314,90 @@ export function CRUDLayout<T = any>({
                     </td>
                   </tr>
                 ) : (
-                  data.map((item, index) => (
-                    <tr
-                      key={(item as any).id}
-                      className="border-b hover:bg-muted/50 transition-colors last:border-0"
-                    >
-                      {displayFields.map((field) => (
-                        <td key={field} className="py-3 px-4 text-foreground">
-                          {renderTableRow
-                            ? renderTableRow(item)
-                            : (item as any)[field]}
-                        </td>
-                      ))}
-                      <td className="py-3 px-4 text-right">
-                        <div className="flex justify-end gap-2">
-                          {canEdit && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleEdit(item)}
-                              className="gap-1 cursor-pointer"
+                  data.map((item, index) => {
+                    console.log(`[CRUD-TABLE] Rendering row ${index}:`, item);
+                    return (
+                      <tr
+                        key={(item as any).id}
+                        className="border-b hover:bg-muted/50 transition-colors last:border-0"
+                      >
+                        {displayFields.map((field) => {
+                          const value = (item as any)[field];
+                          console.log(
+                            `[CRUD-TABLE] Field "${field}" = ${value} (type: ${typeof value})`
+                          );
+                          return (
+                            <td
+                              key={field}
+                              className="py-3 px-4 text-sm font-medium text-foreground/90"
                             >
-                              <Pencil className="w-3 h-3" />
-                              Editar
-                            </Button>
-                          )}
-                          {canDelete && (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  className="gap-1 cursor-pointer"
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                  Deletar
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>
-                                    Você tem certeza?
-                                  </AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Esta ação não pode ser desfeita. O registro
-                                    será deletado permanentemente.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <div className="flex gap-3 justify-end">
-                                  <AlertDialogCancel className="cursor-pointer">
-                                    Cancelar
-                                  </AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() =>
-                                      handleDelete(
-                                        (item as any).id,
-                                        (item as any).nome || (item as any).codigo
-                                      )
-                                    }
-                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90 cursor-pointer"
+                              {renderTableRow
+                                ? renderTableRow(item)
+                                : String(getDisplayValue(field, value))}
+                            </td>
+                          );
+                        })}
+                        <td className="py-3 px-4 text-right">
+                          <div className="flex justify-end gap-2">
+                            {canEdit && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleEdit(item)}
+                                className="gap-1 cursor-pointer"
+                              >
+                                <Pencil className="w-3 h-3" />
+                                Editar
+                              </Button>
+                            )}
+                            {canDelete && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    className="gap-1 cursor-pointer"
                                   >
+                                    <Trash2 className="w-3 h-3" />
                                     Deletar
-                                  </AlertDialogAction>
-                                </div>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          )}
-                          {rowActions && rowActions(item)}
-                        </div>
-                      </td>
-                    </tr>
-                  ))
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>
+                                      Você tem certeza?
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Esta ação não pode ser desfeita. O
+                                      registro será deletado permanentemente.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <div className="flex gap-3 justify-end">
+                                    <AlertDialogCancel className="cursor-pointer">
+                                      Cancelar
+                                    </AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() =>
+                                        handleDelete(
+                                          (item as any).id,
+                                          (item as any).nome ||
+                                            (item as any).codigo
+                                        )
+                                      }
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90 cursor-pointer"
+                                    >
+                                      Deletar
+                                    </AlertDialogAction>
+                                  </div>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+                            {rowActions && rowActions(item)}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>

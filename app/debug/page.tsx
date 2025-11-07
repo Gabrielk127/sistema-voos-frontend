@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { testAuth } from "@/lib/api-client";
+import { testAuth, listEmployeeCategories } from "@/lib/api-client";
 
 export default function DebugPage() {
   const [logs, setLogs] = useState<string[]>([]);
@@ -9,7 +9,10 @@ export default function DebugPage() {
 
   const addLog = (message: string) => {
     console.log(message);
-    setLogs((prev) => [...prev, `[${new Date().toLocaleTimeString()}] ${message}`]);
+    setLogs((prev) => [
+      ...prev,
+      `[${new Date().toLocaleTimeString()}] ${message}`,
+    ]);
   };
 
   const checkLocalStorage = () => {
@@ -18,7 +21,9 @@ export default function DebugPage() {
     const user = localStorage.getItem("user");
     const isAuthenticated = localStorage.getItem("isAuthenticated");
 
-    addLog(`authToken: ${token ? `${token.substring(0, 30)}...` : "NÃO ENCONTRADO"}`);
+    addLog(
+      `authToken: ${token ? `${token.substring(0, 30)}...` : "NÃO ENCONTRADO"}`
+    );
     addLog(`user: ${user ? user : "NÃO ENCONTRADO"}`);
     addLog(`isAuthenticated: ${isAuthenticated}`);
 
@@ -44,6 +49,26 @@ export default function DebugPage() {
       addLog(`Response: ${JSON.stringify(result.data, null, 2)}`);
     } catch (error: any) {
       addLog(`✗ Erro no teste: ${error.message}`);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const testEmployeeCategories = async () => {
+    setLoading(true);
+    addLog("=== TESTANDO EMPLOYEE CATEGORIES ===");
+
+    try {
+      const categories = await listEmployeeCategories();
+      addLog("✓ Categorias carregadas com sucesso");
+      addLog(`Quantidade: ${categories.length}`);
+      categories.forEach((cat: any) => {
+        addLog(
+          `  - ID: ${cat.id}, Type: ${cat.type}, Description: ${cat.description}`
+        );
+      });
+    } catch (error: any) {
+      addLog(`✗ Erro ao carregar categorias: ${error.message}`);
     } finally {
       setLoading(false);
     }
@@ -88,6 +113,14 @@ export default function DebugPage() {
           </button>
 
           <button
+            onClick={testEmployeeCategories}
+            disabled={loading}
+            className="bg-purple-600 hover:bg-purple-700 px-6 py-2 rounded font-semibold disabled:opacity-50"
+          >
+            {loading ? "Testando..." : "3. Testar Employee Categories"}
+          </button>
+
+          <button
             onClick={clearLogs}
             className="bg-yellow-600 hover:bg-yellow-700 px-6 py-2 rounded font-semibold"
           >
@@ -104,7 +137,9 @@ export default function DebugPage() {
 
         <div className="bg-gray-800 rounded-lg p-6 h-96 overflow-y-auto font-mono text-sm space-y-1">
           {logs.length === 0 ? (
-            <p className="text-gray-500">Clique nos botões acima para começar...</p>
+            <p className="text-gray-500">
+              Clique nos botões acima para começar...
+            </p>
           ) : (
             logs.map((log, i) => (
               <div key={i} className="text-gray-300">
@@ -117,10 +152,24 @@ export default function DebugPage() {
         <div className="mt-8 bg-gray-800 rounded-lg p-6 text-sm">
           <h2 className="text-xl font-bold mb-4">Instruções:</h2>
           <ol className="space-y-2 list-decimal list-inside">
-            <li>Clique em "1. Verificar localStorage" para ver se os tokens estão salvos</li>
-            <li>Se os tokens não aparecerem, você precisa fazer login novamente</li>
-            <li>Clique em "2. Testar Autenticação" para fazer um teste real com a API</li>
-            <li>Se a autenticação falhar, veja o erro e me envie</li>
+            <li>
+              Clique em "1. Verificar localStorage" para ver se os tokens estão
+              salvos
+            </li>
+            <li>
+              Se os tokens não aparecerem, você precisa fazer login novamente
+            </li>
+            <li>
+              Clique em "2. Testar Autenticação" para fazer um teste real com a
+              API
+            </li>
+            <li>
+              Clique em "3. Testar Employee Categories" para verificar se as
+              categorias estão carregando corretamente
+            </li>
+            <li>
+              Se algo falhar, verifique o erro na mensagem e no console (F12)
+            </li>
           </ol>
         </div>
       </div>

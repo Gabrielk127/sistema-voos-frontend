@@ -16,7 +16,11 @@ import { usePermissions } from "@/hooks/use-permissions";
 export default function EmployeeCategoriesPage() {
   const [categories, setCategories] = useState<EmployeeCategory[]>([]);
   const [loading, setLoading] = useState(true);
-  const { canManageEmployees } = usePermissions();
+  const {
+    canCreateEmployeeCategories,
+    canEditEmployeeCategories,
+    canDeleteEmployeeCategories,
+  } = usePermissions();
 
   useEffect(() => {
     loadCategories();
@@ -68,7 +72,7 @@ export default function EmployeeCategoriesPage() {
         data={categories}
         loading={loading}
         onAdd={async (data: any) => {
-          if (!canManageEmployees()) {
+          if (!canCreateEmployeeCategories()) {
             alert("Você não tem permissão para criar categorias");
             return;
           }
@@ -80,7 +84,7 @@ export default function EmployeeCategoriesPage() {
           loadCategories();
         }}
         onEdit={async (id, data: any) => {
-          if (!canManageEmployees()) {
+          if (!canEditEmployeeCategories()) {
             alert("Você não tem permissão para editar categorias");
             return;
           }
@@ -92,7 +96,7 @@ export default function EmployeeCategoriesPage() {
           loadCategories();
         }}
         onDelete={async (id) => {
-          if (!canManageEmployees()) {
+          if (!canDeleteEmployeeCategories()) {
             alert("Você não tem permissão para deletar categorias");
             return;
           }

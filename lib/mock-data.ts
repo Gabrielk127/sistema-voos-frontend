@@ -1,0 +1,236 @@
+// Mock data for development and testing
+
+export const mockFlightTypes = [
+  {
+    id: 1,
+    type: "DOM",
+    description: "Voo Doméstico",
+    createdAt: "2025-01-15T10:30:00Z",
+    updatedAt: "2025-01-15T10:30:00Z",
+  },
+  {
+    id: 2,
+    type: "INT",
+    description: "Voo Internacional",
+    createdAt: "2025-01-15T10:30:00Z",
+    updatedAt: "2025-01-15T10:30:00Z",
+  },
+  {
+    id: 3,
+    type: "FRET",
+    description: "Voo Fretado",
+    createdAt: "2025-01-15T10:30:00Z",
+    updatedAt: "2025-01-15T10:30:00Z",
+  },
+];
+
+export const mockAirports = [
+  {
+    id: 1,
+    code: "GIG",
+    name: "Aeroporto Internacional Tom Jobim",
+    city: "Rio de Janeiro",
+    country: "Brasil",
+    description: "Principal aeroporto do Rio de Janeiro",
+    createdAt: "2025-01-15T10:30:00Z",
+    updatedAt: "2025-01-15T10:30:00Z",
+  },
+  {
+    id: 2,
+    code: "GRU",
+    name: "Aeroporto Internacional de São Paulo",
+    city: "São Paulo",
+    country: "Brasil",
+    description: "Maior aeroporto do Brasil",
+    createdAt: "2025-01-15T10:30:00Z",
+    updatedAt: "2025-01-15T10:30:00Z",
+  },
+  {
+    id: 3,
+    code: "MIA",
+    name: "Miami International Airport",
+    city: "Miami",
+    country: "Estados Unidos",
+    description: "Principal aeroporto de Miami",
+    createdAt: "2025-01-15T10:30:00Z",
+    updatedAt: "2025-01-15T10:30:00Z",
+  },
+];
+
+export const mockAircraftTypes = [
+  {
+    id: 1,
+    type: "Boeing 737",
+    description: "Boeing 737-800",
+    passengerCapacity: 189,
+    cargoCapacityKg: 2500,
+    maxAltitudeFt: 41000,
+    maxSpeed: 490,
+    rangeKm: 5400,
+    createdAt: "2025-01-15T10:30:00Z",
+    updatedAt: "2025-01-15T10:30:00Z",
+  },
+  {
+    id: 2,
+    type: "Airbus A320",
+    description: "Airbus A320-200",
+    passengerCapacity: 194,
+    cargoCapacityKg: 2700,
+    maxAltitudeFt: 43000,
+    maxSpeed: 480,
+    rangeKm: 6300,
+    createdAt: "2025-01-15T10:30:00Z",
+    updatedAt: "2025-01-15T10:30:00Z",
+  },
+];
+
+export const mockFlights = [
+  {
+    id: 1,
+    flightType: mockFlightTypes[0],
+    aircraftType: mockAircraftTypes[0],
+    originAirport: mockAirports[0],
+    destinationAirport: mockAirports[1],
+    idFlightType: 1,
+    idAircraftType: 1,
+    idOriginAirport: 1,
+    idDestinationAirport: 2,
+    departureDate: "2025-01-20",
+    scheduledDepartureTime: "08:00",
+    arrivalDate: "2025-01-20",
+    scheduledArrivalTime: "11:30",
+    scheduledDurationMin: "210",
+    status: "ACTIVE",
+    createdAt: "2025-01-15T10:30:00Z",
+    updatedAt: "2025-01-15T10:30:00Z",
+  },
+  {
+    id: 2,
+    flightType: mockFlightTypes[1],
+    aircraftType: mockAircraftTypes[1],
+    originAirport: mockAirports[1],
+    destinationAirport: mockAirports[2],
+    idFlightType: 2,
+    idAircraftType: 2,
+    idOriginAirport: 2,
+    idDestinationAirport: 3,
+    departureDate: "2025-01-21",
+    scheduledDepartureTime: "14:00",
+    arrivalDate: "2025-01-22",
+    scheduledArrivalTime: "02:30",
+    scheduledDurationMin: "720",
+    status: "ACTIVE",
+    createdAt: "2025-01-15T10:30:00Z",
+    updatedAt: "2025-01-15T10:30:00Z",
+  },
+  {
+    id: 3,
+    flightType: mockFlightTypes[0],
+    aircraftType: mockAircraftTypes[0],
+    originAirport: mockAirports[1],
+    destinationAirport: mockAirports[0],
+    idFlightType: 1,
+    idAircraftType: 1,
+    idOriginAirport: 2,
+    idDestinationAirport: 1,
+    departureDate: "2025-01-22",
+    scheduledDepartureTime: "18:00",
+    arrivalDate: "2025-01-22",
+    scheduledArrivalTime: "21:30",
+    scheduledDurationMin: "210",
+    status: "ACTIVE",
+    createdAt: "2025-01-15T10:30:00Z",
+    updatedAt: "2025-01-15T10:30:00Z",
+  },
+];
+
+export const mockPassengers = [
+  {
+    id: 1,
+    email: "joao.silva@email.com",
+    username: "joaosilva",
+    cpf: "123.456.789-00",
+    createdAt: "2025-01-10T10:30:00Z",
+    updatedAt: "2025-01-10T10:30:00Z",
+  },
+  {
+    id: 2,
+    email: "maria.santos@email.com",
+    username: "mariasantos",
+    cpf: "987.654.321-00",
+    createdAt: "2025-01-11T10:30:00Z",
+    updatedAt: "2025-01-11T10:30:00Z",
+  },
+  {
+    id: 3,
+    email: "pedro.oliveira@email.com",
+    username: "pedrooliveira",
+    cpf: "456.789.123-00",
+    createdAt: "2025-01-12T10:30:00Z",
+    updatedAt: "2025-01-12T10:30:00Z",
+  },
+];
+
+export const mockAircraft = [
+  {
+    id: 1,
+    registration: "PT-XYZ",
+    manufacturer: "Boeing",
+    model: "737-800",
+    manufacturerSerialNumber: "30001",
+    createdAt: "2025-01-15T10:30:00Z",
+    updatedAt: "2025-01-15T10:30:00Z",
+  },
+  {
+    id: 2,
+    registration: "PT-ABC",
+    manufacturer: "Airbus",
+    model: "A320-200",
+    manufacturerSerialNumber: "20001",
+    createdAt: "2025-01-15T10:30:00Z",
+    updatedAt: "2025-01-15T10:30:00Z",
+  },
+];
+
+export const mockEmployeeCategories = [
+  {
+    id: 1,
+    type: "Piloto",
+    description: "Piloto de aeronave",
+    createdAt: "2025-01-15T10:30:00Z",
+    updatedAt: "2025-01-15T10:30:00Z",
+  },
+  {
+    id: 2,
+    type: "Comissário",
+    description: "Comissário de bordo",
+    createdAt: "2025-01-15T10:30:00Z",
+    updatedAt: "2025-01-15T10:30:00Z",
+  },
+  {
+    id: 3,
+    type: "Mecânico",
+    description: "Mecânico de manutenção",
+    createdAt: "2025-01-15T10:30:00Z",
+    updatedAt: "2025-01-15T10:30:00Z",
+  },
+];
+
+export const mockEmployees = [
+  {
+    id: 1,
+    employeeCategory: mockEmployeeCategories[0],
+    name: "Carlos Alberto",
+    email: "carlos.alberto@airline.com",
+    createdAt: "2025-01-15T10:30:00Z",
+    updatedAt: "2025-01-15T10:30:00Z",
+  },
+  {
+    id: 2,
+    employeeCategory: mockEmployeeCategories[1],
+    name: "Fernanda Costa",
+    email: "fernanda.costa@airline.com",
+    createdAt: "2025-01-15T10:30:00Z",
+    updatedAt: "2025-01-15T10:30:00Z",
+  },
+];

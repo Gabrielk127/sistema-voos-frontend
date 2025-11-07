@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { DashboardLayout } from "@/components/dashboard-layout";
-import { CRUDLayout, type Field } from "@/components/crud-layout";
+import { CRUDLayoutSimple, type Field } from "@/components/crud-layout-simple";
 import {
   listAirports,
   createAirport,
@@ -12,19 +12,14 @@ import {
 } from "@/lib/api-client";
 import { Globe } from "lucide-react";
 import { usePermissions } from "@/hooks/use-permissions";
-import { useRouter } from "next/navigation";
 
 export default function AirportsPage() {
   const [airports, setAirports] = useState<Airport[]>([]);
   const [loading, setLoading] = useState(true);
-  const { canManageFlights } = usePermissions();
-  const router = useRouter();
+  const { canCreateAirports, canEditAirports, canDeleteAirports } =
+    usePermissions();
 
   useEffect(() => {
-    if (!canManageFlights()) {
-      router.push("/dashboard");
-      return;
-    }
     loadAirports();
   }, []);
 
@@ -47,8 +42,6 @@ export default function AirportsPage() {
       type: "text",
       placeholder: "GRU",
       required: true,
-      validation: (value: string) =>
-        value.length === 3 ? true : "Código deve ter exatamente 3 letras",
     },
     {
       name: "name",
@@ -56,10 +49,6 @@ export default function AirportsPage() {
       type: "text",
       placeholder: "Aeroporto de Guarulhos",
       required: true,
-      validation: (value: string) =>
-        value.length >= 5
-          ? true
-          : "Nome deve ter no mínimo 5 caracteres",
     },
     {
       name: "city",
@@ -88,7 +77,7 @@ export default function AirportsPage() {
     <DashboardLayout
       breadcrumbs={[{ label: "Dashboard" }, { label: "Aeroportos" }]}
     >
-      <CRUDLayout
+      <CRUDLayoutSimple
         title="Gerenciamento de Aeroportos"
         description="Cadastre e gerencie os aeroportos"
         icon={<Globe className="w-6 h-6" />}
@@ -96,10 +85,11 @@ export default function AirportsPage() {
         data={airports}
         loading={loading}
         onAdd={async (data: any) => {
-          if (!canManageFlights()) {
+          if (!canCreateAirports()) {
             alert("Você não tem permissão para criar aeroportos");
             return;
           }
+          console.log("[AIRPORTS] Criando airport com:", data);
           await createAirport({
             code: data.code,
             name: data.name,
@@ -107,10 +97,10 @@ export default function AirportsPage() {
             country: data.country,
             description: data.description,
           });
-          loadAirports();
+          await loadAirports();
         }}
-        onEdit={async (id, data: any) => {
-          if (!canManageFlights()) {
+        onEdit={async (id: number, data: any) => {
+          if (!canEditAirports()) {
             alert("Você não tem permissão para editar aeroportos");
             return;
           }
@@ -121,15 +111,15 @@ export default function AirportsPage() {
             country: data.country,
             description: data.description,
           });
-          loadAirports();
+          await loadAirports();
         }}
-        onDelete={async (id) => {
-          if (!canManageFlights()) {
+        onDelete={async (id: number) => {
+          if (!canDeleteAirports()) {
             alert("Você não tem permissão para deletar aeroportos");
             return;
           }
           await deleteAirport(id);
-          loadAirports();
+          await loadAirports();
         }}
         displayFields={["id", "code", "name", "city", "country"]}
       />

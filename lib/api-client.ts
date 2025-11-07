@@ -1,7 +1,21 @@
 const API_BASE_URL =
   typeof window !== "undefined"
-    ? (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080").replace(/\/$/, "")
+    ? (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080").replace(
+        /\/$/,
+        ""
+      )
     : "http://localhost:8080";
+
+import {
+  mockFlightTypes,
+  mockFlights,
+  mockAirports,
+  mockAircraftTypes,
+  mockPassengers,
+  mockAircraft,
+  mockEmployeeCategories,
+  mockEmployees,
+} from "./mock-data";
 
 export interface User {
   id: string;
@@ -74,7 +88,9 @@ async function apiCall<T>(
       headers["Authorization"] = `Bearer ${token}`;
       console.log(`[AUTH] Token added (${token.substring(0, 20)}...)`);
     } else {
-      console.warn(`[AUTH] No token found for authenticated endpoint: ${endpoint}`);
+      console.warn(
+        `[AUTH] No token found for authenticated endpoint: ${endpoint}`
+      );
     }
   }
 
@@ -82,7 +98,7 @@ async function apiCall<T>(
     isPublic,
     headers: {
       "Content-Type": headers["Content-Type"],
-      "Authorization": headers["Authorization"] ? "Bearer ..." : "none",
+      Authorization: headers["Authorization"] ? "Bearer ..." : "none",
     },
   });
 
@@ -184,27 +200,27 @@ export async function authHealth(): Promise<{ message: string }> {
 export async function testAuth(): Promise<any> {
   console.log("Testing authentication...");
   const token = getAuthToken();
-  console.log("Token in storage:", token ? `${token.substring(0, 20)}...` : "NOT FOUND");
-  
+  console.log(
+    "Token in storage:",
+    token ? `${token.substring(0, 20)}...` : "NOT FOUND"
+  );
+
   try {
-    const response = await fetch(
-      `${API_BASE_URL}/passengers`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-      }
-    );
-    
+    const response = await fetch(`${API_BASE_URL}/passengers`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
+    });
+
     const data = await response.json();
     console.log("Auth Test Result:", {
       status: response.status,
       statusText: response.statusText,
       data,
     });
-    
+
     return {
       status: response.status,
       statusText: response.statusText,
@@ -226,41 +242,48 @@ export interface Aircraft {
 }
 
 export interface CreateAircraftRequest {
-  aircraftTypeId: number;
   registration: string;
 }
 
 export async function createAircraft(
   data: CreateAircraftRequest
 ): Promise<Aircraft> {
-  return apiCall("/aircraft", {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
+  console.log("[MOCK] Aircraft created:", data);
+  const newAircraft: any = {
+    id: Math.max(...mockAircraft.map((a) => a.id), 0) + 1,
+    ...data,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  mockAircraft.push(newAircraft);
+  return newAircraft;
 }
 
 export async function listAircraft(): Promise<Aircraft[]> {
-  return apiCall("/aircraft");
+  return mockAircraft as unknown as Aircraft[];
 }
 
 export async function getAircraft(id: number): Promise<Aircraft> {
-  return apiCall(`/aircraft/${id}`);
+  return (mockAircraft.find((a) => a.id === id) ||
+    mockAircraft[0]) as unknown as Aircraft;
 }
 
 export async function updateAircraft(
   id: number,
   data: Partial<CreateAircraftRequest>
 ): Promise<Aircraft> {
-  return apiCall(`/aircraft/${id}`, {
-    method: "PUT",
-    body: JSON.stringify(data),
-  });
+  const aircraft = mockAircraft.find((a) => a.id === id) as any;
+  if (aircraft) {
+    Object.assign(aircraft, data, { updatedAt: new Date().toISOString() });
+  }
+  return aircraft as Aircraft;
 }
 
 export async function deleteAircraft(id: number): Promise<void> {
-  return apiCall(`/aircraft/${id}`, {
-    method: "DELETE",
-  });
+  const index = mockAircraft.findIndex((a) => a.id === id);
+  if (index > -1) {
+    mockAircraft.splice(index, 1);
+  }
 }
 
 // AIRPORT ENDPOINTS
@@ -276,34 +299,48 @@ export interface Airport {
 export async function createAirport(
   data: Omit<Airport, "id">
 ): Promise<Airport> {
-  return apiCall("/airports", {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
+  const newId = Math.max(...mockAirports.map((a) => a.id), 0) + 1;
+
+  const newAirport: any = {
+    id: newId,
+    code: data.code,
+    name: data.name,
+    city: data.city,
+    country: data.country,
+    description: data.description || "",
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  mockAirports.push(newAirport);
+  return newAirport as Airport;
 }
 
 export async function listAirports(): Promise<Airport[]> {
-  return apiCall("/airports", { isPublic: true });
+  return [...mockAirports] as Airport[];
 }
 
 export async function getAirport(id: number): Promise<Airport> {
-  return apiCall(`/airports/${id}`, { isPublic: true });
+  return (mockAirports.find((a) => a.id === id) || mockAirports[0]) as Airport;
 }
 
 export async function updateAirport(
   id: number,
   data: Omit<Airport, "id">
 ): Promise<Airport> {
-  return apiCall(`/airports/${id}`, {
-    method: "PUT",
-    body: JSON.stringify(data),
-  });
+  const airport = mockAirports.find((a) => a.id === id) as any;
+  if (airport) {
+    Object.assign(airport, data, { updatedAt: new Date().toISOString() });
+    return airport as Airport;
+  }
+  return mockAirports[0] as Airport;
 }
 
 export async function deleteAirport(id: number): Promise<void> {
-  return apiCall(`/airports/${id}`, {
-    method: "DELETE",
-  });
+  const index = mockAirports.findIndex((a) => a.id === id);
+  if (index > -1) {
+    mockAirports.splice(index, 1);
+  }
 }
 
 // AIRCRAFT TYPE ENDPOINTS
@@ -322,7 +359,7 @@ export interface AircraftType {
 }
 
 export async function listAircraftTypes(): Promise<AircraftType[]> {
-  return apiCall("/aircraft-types", { isPublic: true });
+  return mockAircraftTypes as AircraftType[];
 }
 
 export async function createAircraftType(
@@ -331,6 +368,7 @@ export async function createAircraftType(
   return apiCall("/aircraft-types", {
     method: "POST",
     body: JSON.stringify(data),
+    isPublic: false,
   });
 }
 
@@ -345,12 +383,14 @@ export async function updateAircraftType(
   return apiCall(`/aircraft-types/${id}`, {
     method: "PUT",
     body: JSON.stringify(data),
+    isPublic: false,
   });
 }
 
 export async function deleteAircraftType(id: number): Promise<void> {
   return apiCall(`/aircraft-types/${id}`, {
     method: "DELETE",
+    isPublic: false,
   });
 }
 
@@ -364,7 +404,7 @@ export interface FlightType {
 }
 
 export async function listFlightTypes(): Promise<FlightType[]> {
-  return apiCall("/flight-types", { isPublic: true });
+  return mockFlightTypes as FlightType[];
 }
 
 export async function createFlightType(
@@ -373,6 +413,7 @@ export async function createFlightType(
   return apiCall("/flight-types", {
     method: "POST",
     body: JSON.stringify(data),
+    isPublic: false,
   });
 }
 
@@ -387,12 +428,14 @@ export async function updateFlightType(
   return apiCall(`/flight-types/${id}`, {
     method: "PUT",
     body: JSON.stringify(data),
+    isPublic: false,
   });
 }
 
 export async function deleteFlightType(id: number): Promise<void> {
   return apiCall(`/flight-types/${id}`, {
     method: "DELETE",
+    isPublic: false,
   });
 }
 
@@ -426,37 +469,55 @@ export interface CreateFlightRequest {
   status?: string;
 }
 
-export async function createFlight(
-  data: CreateFlightRequest
-): Promise<Flight> {
-  return apiCall("/flights", {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
+export async function createFlight(data: CreateFlightRequest): Promise<Flight> {
+  console.log("[MOCK] Flight created:", data);
+  const newFlight: any = {
+    id: Math.max(...mockFlights.map((f) => f.id), 0) + 1,
+    ...data,
+    flightType:
+      mockFlightTypes.find((ft) => ft.id === data.idFlightType) ||
+      mockFlightTypes[0],
+    aircraftType:
+      mockAircraftTypes.find((at) => at.id === data.idAircraftType) ||
+      mockAircraftTypes[0],
+    originAirport:
+      mockAirports.find((a) => a.id === data.idOriginAirport) ||
+      mockAirports[0],
+    destinationAirport:
+      mockAirports.find((a) => a.id === data.idDestinationAirport) ||
+      mockAirports[1],
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  mockFlights.push(newFlight);
+  return newFlight as Flight;
 }
 
 export async function listFlights(): Promise<Flight[]> {
-  return apiCall("/flights", { isPublic: true });
+  return mockFlights as unknown as Flight[];
 }
 
 export async function getFlight(id: number): Promise<Flight> {
-  return apiCall(`/flights/${id}`, { isPublic: true });
+  return (mockFlights.find((f) => f.id === id) ||
+    mockFlights[0]) as unknown as Flight;
 }
 
 export async function updateFlight(
   id: number,
   data: Partial<CreateFlightRequest>
 ): Promise<Flight> {
-  return apiCall(`/flights/${id}`, {
-    method: "PUT",
-    body: JSON.stringify(data),
-  });
+  const flight = mockFlights.find((f) => f.id === id) as any;
+  if (flight) {
+    Object.assign(flight, data, { updatedAt: new Date().toISOString() });
+  }
+  return flight as Flight;
 }
 
 export async function deleteFlight(id: number): Promise<void> {
-  return apiCall(`/flights/${id}`, {
-    method: "DELETE",
-  });
+  const index = mockFlights.findIndex((f) => f.id === id);
+  if (index > -1) {
+    mockFlights.splice(index, 1);
+  }
 }
 
 // PASSENGER ENDPOINTS
@@ -479,33 +540,41 @@ export interface CreatePassengerRequest {
 export async function createPassenger(
   data: CreatePassengerRequest
 ): Promise<Passenger> {
-  return apiCall("/passengers", {
-    method: "POST",
-    body: JSON.stringify(data),
-  });
+  console.log("[MOCK] Passenger created:", data);
+  const newPassenger: any = {
+    id: Math.max(...mockPassengers.map((p) => p.id), 0) + 1,
+    ...data,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+  mockPassengers.push(newPassenger);
+  return newPassenger;
 }
 
 export async function listPassengers(): Promise<Passenger[]> {
-  return apiCall("/passengers");
+  return mockPassengers as Passenger[];
 }
 
 export async function getPassenger(id: number): Promise<Passenger> {
-  return apiCall(`/passengers/${id}`);
+  return (mockPassengers.find((p) => p.id === id) ||
+    mockPassengers[0]) as Passenger;
 }
 
 export async function updatePassenger(
   id: number,
   data: Partial<CreatePassengerRequest>
 ): Promise<Passenger> {
-  return apiCall(`/passengers/${id}`, {
-    method: "PUT",
-    body: JSON.stringify(data),
-  });
+  const passenger = mockPassengers.find((p) => p.id === id) as any;
+  if (passenger) {
+    Object.assign(passenger, data, { updatedAt: new Date().toISOString() });
+  }
+  return passenger as Passenger;
 }
 
 export async function deletePassenger(id: number): Promise<void> {
   return apiCall(`/passengers/${id}`, {
     method: "DELETE",
+    isPublic: false,
   });
 }
 
@@ -529,10 +598,13 @@ export async function createEmployeeCategory(
   return apiCall("/employee-categories", {
     method: "POST",
     body: JSON.stringify(data),
+    isPublic: false,
   });
 }
 
-export async function getEmployeeCategory(id: number): Promise<EmployeeCategory> {
+export async function getEmployeeCategory(
+  id: number
+): Promise<EmployeeCategory> {
   return apiCall(`/employee-categories/${id}`);
 }
 
@@ -543,12 +615,14 @@ export async function updateEmployeeCategory(
   return apiCall(`/employee-categories/${id}`, {
     method: "PUT",
     body: JSON.stringify(data),
+    isPublic: false,
   });
 }
 
 export async function deleteEmployeeCategory(id: number): Promise<void> {
   return apiCall(`/employee-categories/${id}`, {
     method: "DELETE",
+    isPublic: false,
   });
 }
 
@@ -574,6 +648,7 @@ export async function createEmployee(
   return apiCall("/employees", {
     method: "POST",
     body: JSON.stringify(data),
+    isPublic: false,
   });
 }
 
@@ -592,12 +667,14 @@ export async function updateEmployee(
   return apiCall(`/employees/${id}`, {
     method: "PUT",
     body: JSON.stringify(data),
+    isPublic: false,
   });
 }
 
 export async function deleteEmployee(id: number): Promise<void> {
   return apiCall(`/employees/${id}`, {
     method: "DELETE",
+    isPublic: false,
   });
 }
 
@@ -619,12 +696,11 @@ export interface CreateTicketRequest {
   checkInCompleted?: boolean;
 }
 
-export async function createTicket(
-  data: CreateTicketRequest
-): Promise<Ticket> {
+export async function createTicket(data: CreateTicketRequest): Promise<Ticket> {
   return apiCall("/tickets", {
     method: "POST",
     body: JSON.stringify(data),
+    isPublic: false,
   });
 }
 
@@ -643,12 +719,14 @@ export async function updateTicket(
   return apiCall(`/tickets/${id}`, {
     method: "PUT",
     body: JSON.stringify(data),
+    isPublic: false,
   });
 }
 
 export async function deleteTicket(id: number): Promise<void> {
   return apiCall(`/tickets/${id}`, {
     method: "DELETE",
+    isPublic: false,
   });
 }
 
@@ -685,6 +763,7 @@ export async function createBooking(
   return apiCall("/bookings", {
     method: "POST",
     body: JSON.stringify(data),
+    isPublic: false,
   });
 }
 
@@ -703,12 +782,14 @@ export async function updateBooking(
   return apiCall(`/bookings/${id}`, {
     method: "PUT",
     body: JSON.stringify(data),
+    isPublic: false,
   });
 }
 
 export async function deleteBooking(id: number): Promise<void> {
   return apiCall(`/bookings/${id}`, {
     method: "DELETE",
+    isPublic: false,
   });
 }
 
@@ -738,6 +819,7 @@ export async function createFlightCrew(
   return apiCall("/flight-crews", {
     method: "POST",
     body: JSON.stringify(data),
+    isPublic: false,
   });
 }
 
@@ -752,11 +834,13 @@ export async function updateFlightCrew(
   return apiCall(`/flight-crews/${id}`, {
     method: "PUT",
     body: JSON.stringify(data),
+    isPublic: false,
   });
 }
 
 export async function deleteFlightCrew(id: number): Promise<void> {
   return apiCall(`/flight-crews/${id}`, {
     method: "DELETE",
+    isPublic: false,
   });
 }
