@@ -103,7 +103,7 @@ async function apiCall<T>(
       return {} as T;
     }
 
-    const data = await response.json();
+    const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
       // If token expired, try refresh
