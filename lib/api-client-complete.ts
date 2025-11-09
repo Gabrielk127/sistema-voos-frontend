@@ -1,19 +1,3 @@
-import {
-  mockFlightTypes,
-  mockAirports,
-  mockAircraftTypes,
-  mockFlights,
-  mockPassengers,
-  mockEmployeeCategories,
-  mockEmployees,
-  mockConnections,
-  mockBookings,
-  mockTickets,
-  mockFlightCrews,
-  mockBoletoPayments,
-  mockCardPayments,
-} from "./mock-data";
-
 const API_BASE_URL =
   typeof window !== "undefined"
     ? (process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080").replace(
@@ -90,14 +74,29 @@ async function apiCall<T>(
     const token = getAuthToken();
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
+      console.log(`[AUTH] Token added (${token.substring(0, 20)}...)`);
+    } else {
+      console.warn(
+        `[AUTH] No token found for authenticated endpoint: ${endpoint}`
+      );
     }
   }
 
+  console.log(`[API] ${fetchOptions.method || "GET"} ${url}`, {
+    isPublic,
+    headers: {
+      "Content-Type": headers["Content-Type"],
+      Authorization: headers["Authorization"] ? "Bearer ..." : "none",
+    },
+  });
+
   try {
+    console.log(`[FETCH] Iniciando requisição para: ${url}`);
     const response = await fetch(url, {
       ...fetchOptions,
       headers,
     });
+    console.log(`[FETCH] Resposta recebida com status: ${response.status}`);
 
     if (response.status === 204) {
       return {} as T;
@@ -122,13 +121,7 @@ async function apiCall<T>(
         }
       }
 
-      // If it's a public endpoint getting 401, treat it as unauthorized access (not an error for fallback)
-      if (response.status === 401 && isPublic) {
-        throw new Error("Unauthorized - use fallback");
-      }
-
       // Better error handling
-      console.error("[API-CALL] Response completa:", data);
       const errorMessage =
         data?.message ||
         data?.error ||
@@ -136,12 +129,13 @@ async function apiCall<T>(
         data?.validationErrors?.[0] ||
         `API Error: ${response.status}`;
 
-      console.error("[API-CALL] Erro:", errorMessage);
+      console.error(`[${response.status}] ${endpoint}:`, data);
       throw new Error(errorMessage);
     }
 
     return data;
   } catch (error) {
+    console.error(`API call failed for ${endpoint}:`, error);
     throw error;
   }
 }
@@ -198,8 +192,8 @@ export interface Airport {
   code: string;
   name: string;
   city: string;
-  state: string;
   country: string;
+  description?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -215,21 +209,11 @@ export async function createAirport(
 }
 
 export async function listAirports(): Promise<Airport[]> {
-  try {
-    return apiCall("/airports", { isPublic: false });
-  } catch (error) {
-    console.warn("[FALLBACK] Usando mock data para airports:", error);
-    return mockAirports;
-  }
+  return apiCall("/airports", { isPublic: true });
 }
 
 export async function getAirport(id: number): Promise<Airport> {
-  try {
-    return apiCall(`/airports/${id}`, { isPublic: false });
-  } catch (error) {
-    console.warn("[FALLBACK] Usando mock data para airport:", error);
-    return mockAirports.find((a) => a.id === id) || mockAirports[0];
-  }
+  return apiCall(`/airports/${id}`, { isPublic: true });
 }
 
 export async function updateAirport(
@@ -265,28 +249,12 @@ export interface AircraftType {
   updatedAt?: string;
 }
 
-export interface CreateAircraftTypeRequest {
-  type: string;
-  description?: string;
-  passengerCapacity: number;
-  aircraftCategory: string;
-  maxSpeed: number;
-  rangeKm: number;
-  cargoCapacityKg: number;
-  maxAltitudeFt: number;
-}
-
 export async function listAircraftTypes(): Promise<AircraftType[]> {
-  try {
-    return apiCall("/aircraft-types", { isPublic: false });
-  } catch (error) {
-    console.warn("[FALLBACK] Usando mock data para aircraft-types:", error);
-    return mockAircraftTypes;
-  }
+  return apiCall("/aircraft-types", { isPublic: true });
 }
 
 export async function createAircraftType(
-  data: CreateAircraftTypeRequest
+  data: Omit<AircraftType, "id" | "createdAt" | "updatedAt">
 ): Promise<AircraftType> {
   return apiCall("/aircraft-types", {
     method: "POST",
@@ -296,12 +264,7 @@ export async function createAircraftType(
 }
 
 export async function getAircraftType(id: number): Promise<AircraftType> {
-  try {
-    return apiCall(`/aircraft-types/${id}`, { isPublic: false });
-  } catch (error) {
-    console.warn("[FALLBACK] Usando mock data para aircraft-type:", error);
-    return mockAircraftTypes.find((t) => t.id === id) || mockAircraftTypes[0];
-  }
+  return apiCall(`/aircraft-types/${id}`, { isPublic: true });
 }
 
 export async function updateAircraftType(
@@ -333,7 +296,7 @@ export interface Aircraft {
 
 export interface CreateAircraftRequest {
   registration: string;
-  idAircraftType: number;
+  aircraftTypeId: number;
 }
 
 export async function createAircraft(
@@ -382,14 +345,7 @@ export interface FlightType {
 }
 
 export async function listFlightTypes(): Promise<FlightType[]> {
-  try {
-    const result = await apiCall<FlightType[]>("/flight-types", {
-      isPublic: false,
-    });
-    return result;
-  } catch (apiError) {
-    return mockFlightTypes;
-  }
+  return apiCall("/flight-types", { isPublic: true });
 }
 
 export async function createFlightType(
@@ -403,12 +359,7 @@ export async function createFlightType(
 }
 
 export async function getFlightType(id: number): Promise<FlightType> {
-  try {
-    return apiCall(`/flight-types/${id}`, { isPublic: false });
-  } catch (error) {
-    console.warn("[FALLBACK] Usando mock data para flight-type:", error);
-    return mockFlightTypes.find((t) => t.id === id) || mockFlightTypes[0];
-  }
+  return apiCall(`/flight-types/${id}`, { isPublic: true });
 }
 
 export async function updateFlightType(
@@ -440,25 +391,11 @@ export interface Connection {
   updatedAt?: string;
 }
 
-export interface CreateConnectionRequest {
-  idOriginAirport: number;
-  idDestinationAirport: number;
-  distance?: number;
-  estimatedTime?: string;
-}
-
 export async function listConnections(): Promise<Connection[]> {
-  try {
-    return apiCall("/connections", { isPublic: false });
-  } catch (error) {
-    console.warn("[FALLBACK] Usando mock data para connections:", error);
-    return mockConnections;
-  }
+  return apiCall("/connections", { isPublic: true });
 }
 
-export async function createConnection(
-  data: CreateConnectionRequest
-): Promise<Connection> {
+export async function createConnection(data: any): Promise<Connection> {
   return apiCall("/connections", {
     method: "POST",
     body: JSON.stringify(data),
@@ -467,18 +404,12 @@ export async function createConnection(
 }
 
 export async function getConnection(id: number): Promise<Connection> {
-  try {
-    return apiCall(`/connections/${id}`, { isPublic: false });
-  } catch (error) {
-    const mock = mockConnections.find((c) => c.id === id);
-    if (mock) return mock;
-    throw error;
-  }
+  return apiCall(`/connections/${id}`, { isPublic: true });
 }
 
 export async function updateConnection(
   id: number,
-  data: Partial<CreateConnectionRequest>
+  data: Partial<any>
 ): Promise<Connection> {
   return apiCall(`/connections/${id}`, {
     method: "PUT",
@@ -520,7 +451,7 @@ export interface CreateFlightRequest {
   scheduledDepartureTime: string;
   arrivalDate: string;
   scheduledArrivalTime: string;
-  scheduledDurationMin: string; // LocalTime format HH:mm:ss
+  scheduledDurationMin: string;
   status?: string;
 }
 
@@ -533,22 +464,11 @@ export async function createFlight(data: CreateFlightRequest): Promise<Flight> {
 }
 
 export async function listFlights(): Promise<Flight[]> {
-  try {
-    return apiCall("/flights", { isPublic: false });
-  } catch (error) {
-    console.warn("[FALLBACK] Usando mock data para flights:", error);
-    return mockFlights;
-  }
+  return apiCall("/flights", { isPublic: true });
 }
 
 export async function getFlight(id: number): Promise<Flight> {
-  try {
-    return apiCall(`/flights/${id}`, { isPublic: false });
-  } catch (error) {
-    const mock = mockFlights.find((f) => f.id === id);
-    if (mock) return mock;
-    throw error;
-  }
+  return apiCall(`/flights/${id}`, { isPublic: true });
 }
 
 export async function updateFlight(
@@ -579,15 +499,7 @@ export interface EmployeeCategory {
 }
 
 export async function listEmployeeCategories(): Promise<EmployeeCategory[]> {
-  try {
-    return apiCall("/employee-categories", { isPublic: false });
-  } catch (error) {
-    console.warn(
-      "[FALLBACK] Usando mock data para employee-categories:",
-      error
-    );
-    return mockEmployeeCategories;
-  }
+  return apiCall("/employee-categories", { isPublic: false });
 }
 
 export async function createEmployeeCategory(
@@ -603,13 +515,7 @@ export async function createEmployeeCategory(
 export async function getEmployeeCategory(
   id: number
 ): Promise<EmployeeCategory> {
-  try {
-    return apiCall(`/employee-categories/${id}`, { isPublic: false });
-  } catch (error) {
-    const mock = mockEmployeeCategories.find((e) => e.id === id);
-    if (mock) return mock;
-    throw error;
-  }
+  return apiCall(`/employee-categories/${id}`, { isPublic: false });
 }
 
 export async function updateEmployeeCategory(
@@ -633,7 +539,7 @@ export async function deleteEmployeeCategory(id: number): Promise<void> {
 // ============ EMPLOYEE ENDPOINTS ============
 export interface Employee {
   id: number;
-  categoriaFuncionario: EmployeeCategory;
+  employeeCategory: EmployeeCategory;
   name: string;
   email: string;
   createdAt?: string;
@@ -641,7 +547,7 @@ export interface Employee {
 }
 
 export interface CreateEmployeeRequest {
-  idEmployeeCategory: number;
+  employeeCategoryId: number;
   name: string;
   email: string;
 }
@@ -657,22 +563,11 @@ export async function createEmployee(
 }
 
 export async function listEmployees(): Promise<Employee[]> {
-  try {
-    return apiCall("/employees", { isPublic: false });
-  } catch (error) {
-    console.warn("[FALLBACK] Usando mock data para employees:", error);
-    return mockEmployees;
-  }
+  return apiCall("/employees", { isPublic: false });
 }
 
 export async function getEmployee(id: number): Promise<Employee> {
-  try {
-    return apiCall(`/employees/${id}`, { isPublic: false });
-  } catch (error) {
-    const mock = mockEmployees.find((e) => e.id === id);
-    if (mock) return mock;
-    throw error;
-  }
+  return apiCall(`/employees/${id}`, { isPublic: false });
 }
 
 export async function updateEmployee(
@@ -696,79 +591,46 @@ export async function deleteEmployee(id: number): Promise<void> {
 // ============ FLIGHT CREW ENDPOINTS ============
 export interface FlightCrew {
   id: number;
-  flightId: number;
-  employeeId: number;
-  employeeName: string;
-  employeeEmail: string;
-  departureDate: string;
+  flight: Flight;
+  employee: Employee;
   role: string;
   createdAt?: string;
   updatedAt?: string;
 }
 
 export interface CreateFlightCrewRequest {
-  idFlight: number;
-  idEmployee: number;
+  flightId: number;
+  employeeId: number;
   role: string;
 }
 
-// Normaliza dados completos do backend para formato simplificado
-function normalizeFlightCrew(raw: any): FlightCrew {
-  return {
-    id: raw.id,
-    flightId: raw.flight?.id || raw.idFlight,
-    employeeId: raw.employee?.id || raw.idEmployee,
-    employeeName: raw.employee?.name || "—",
-    employeeEmail: raw.employee?.email || "—",
-    departureDate: raw.flight?.departureDate || "—",
-    role: raw.role,
-    createdAt: raw.createdAt,
-    updatedAt: raw.updatedAt,
-  };
-}
-
 export async function listFlightCrews(): Promise<FlightCrew[]> {
-  try {
-    const data = await apiCall<any[]>("/flight-crews", { isPublic: false });
-    return data.map(normalizeFlightCrew);
-  } catch (error) {
-    console.warn("[FALLBACK] Usando mock data para flight-crews:", error);
-    return mockFlightCrews.map(normalizeFlightCrew);
-  }
+  return apiCall("/flight-crews", { isPublic: false });
 }
 
 export async function createFlightCrew(
   data: CreateFlightCrewRequest
 ): Promise<FlightCrew> {
-  const response = await apiCall<any>("/flight-crews", {
+  return apiCall("/flight-crews", {
     method: "POST",
     body: JSON.stringify(data),
     isPublic: false,
   });
-  return normalizeFlightCrew(response);
 }
 
 export async function getFlightCrew(id: number): Promise<FlightCrew> {
-  try {
-    const data = await apiCall<any>(`/flight-crews/${id}`, { isPublic: false });
-    return normalizeFlightCrew(data);
-  } catch (error) {
-    const mock = mockFlightCrews.find((f) => f.id === id);
-    if (mock) return normalizeFlightCrew(mock);
-    throw error;
-  }
+  return apiCall(`/flight-crews/${id}`, { isPublic: false });
 }
 
 export async function updateFlightCrew(
   id: number,
   data: Partial<CreateFlightCrewRequest>
 ): Promise<FlightCrew> {
-  const response = await apiCall<any>(`/flight-crews/${id}`, {
+  return apiCall(`/flight-crews/${id}`, {
     method: "PUT",
     body: JSON.stringify(data),
     isPublic: false,
   });
-  return normalizeFlightCrew(response);
 }
 
 export async function deleteFlightCrew(id: number): Promise<void> {
@@ -791,8 +653,8 @@ export interface Passenger {
 export interface CreatePassengerRequest {
   email: string;
   username: string;
-  password: string;
   cpf: string;
+  password?: string;
 }
 
 export async function createPassenger(
@@ -806,22 +668,11 @@ export async function createPassenger(
 }
 
 export async function listPassengers(): Promise<Passenger[]> {
-  try {
-    return apiCall("/passengers", { isPublic: false });
-  } catch (error) {
-    console.warn("[FALLBACK] Usando mock data para passengers:", error);
-    return mockPassengers;
-  }
+  return apiCall("/passengers", { isPublic: false });
 }
 
 export async function getPassenger(id: number): Promise<Passenger> {
-  try {
-    return apiCall(`/passengers/${id}`, { isPublic: false });
-  } catch (error) {
-    const mock = mockPassengers.find((p) => p.id === id);
-    if (mock) return mock;
-    throw error;
-  }
+  return apiCall(`/passengers/${id}`, { isPublic: false });
 }
 
 export async function updatePassenger(
@@ -859,15 +710,14 @@ export interface Booking {
 }
 
 export interface CreateBookingRequest {
-  idPassenger: number;
-  idFlight: number;
+  passengerId: number;
+  flightId: number;
   bookingNumber?: string;
   purchaseDate: string;
   totalAmount: number;
-  paymentMethod: string;
+  paymentMethod?: string;
   paymentStatus?: string;
-  confirmationDate?: string;
-  cancellationDate?: string;
+  numberOfSeats?: number;
 }
 
 export async function createBooking(
@@ -881,22 +731,11 @@ export async function createBooking(
 }
 
 export async function listBookings(): Promise<Booking[]> {
-  try {
-    return apiCall("/bookings", { isPublic: false });
-  } catch (error) {
-    console.warn("[FALLBACK] Usando mock data para bookings:", error);
-    return mockBookings;
-  }
+  return apiCall("/bookings", { isPublic: false });
 }
 
 export async function getBooking(id: number): Promise<Booking> {
-  try {
-    return apiCall(`/bookings/${id}`, { isPublic: false });
-  } catch (error) {
-    const mock = mockBookings.find((b) => b.id === id);
-    if (mock) return mock;
-    throw error;
-  }
+  return apiCall(`/bookings/${id}`, { isPublic: false });
 }
 
 export async function updateBooking(
@@ -929,10 +768,10 @@ export interface Ticket {
 }
 
 export interface CreateTicketRequest {
-  idBooking: number;
+  bookingId: number;
   passengerName: string;
   seatNumber: number;
-  checkInCompleted: boolean;
+  checkInCompleted?: boolean;
 }
 
 export async function createTicket(data: CreateTicketRequest): Promise<Ticket> {
@@ -944,22 +783,11 @@ export async function createTicket(data: CreateTicketRequest): Promise<Ticket> {
 }
 
 export async function listTickets(): Promise<Ticket[]> {
-  try {
-    return apiCall("/tickets", { isPublic: false });
-  } catch (error) {
-    console.warn("[FALLBACK] Usando mock data para tickets:", error);
-    return mockTickets;
-  }
+  return apiCall("/tickets", { isPublic: false });
 }
 
 export async function getTicket(id: number): Promise<Ticket> {
-  try {
-    return apiCall(`/tickets/${id}`, { isPublic: false });
-  } catch (error) {
-    const mock = mockTickets.find((t) => t.id === id);
-    if (mock) return mock;
-    throw error;
-  }
+  return apiCall(`/tickets/${id}`, { isPublic: false });
 }
 
 export async function updateTicket(
@@ -992,9 +820,8 @@ export interface BoletoPayment {
 }
 
 export interface CreateBoletoPaymentRequest {
-  idBooking: number;
-  boletoCode: string;
-  dueDate: string;
+  bookingId: number;
+  amount: number;
 }
 
 export async function createBoletoPayment(
@@ -1008,22 +835,11 @@ export async function createBoletoPayment(
 }
 
 export async function listBoletoPayments(): Promise<BoletoPayment[]> {
-  try {
-    return apiCall("/boleto-payments", { isPublic: false });
-  } catch (error) {
-    console.warn("[FALLBACK] Usando mock data para boleto-payments:", error);
-    return mockBoletoPayments;
-  }
+  return apiCall("/boleto-payments", { isPublic: false });
 }
 
 export async function getBoletoPayment(id: number): Promise<BoletoPayment> {
-  try {
-    return apiCall(`/boleto-payments/${id}`, { isPublic: false });
-  } catch (error) {
-    const mock = mockBoletoPayments.find((b) => b.id === id);
-    if (mock) return mock;
-    throw error;
-  }
+  return apiCall(`/boleto-payments/${id}`, { isPublic: false });
 }
 
 export async function updateBoletoPayment(
@@ -1057,12 +873,12 @@ export interface CardPayment {
 }
 
 export interface CreateCardPaymentRequest {
-  idBooking: number;
-  cardBrand: string;
-  encryptedCardNumber: string;
-  expirationMonth: number;
-  expirationYear: number;
-  authorizationDate?: string;
+  bookingId: number;
+  cardNumber: string;
+  cardholderName: string;
+  expiryDate: string;
+  cvv: string;
+  amount: number;
 }
 
 export async function createCardPayment(
@@ -1076,22 +892,11 @@ export async function createCardPayment(
 }
 
 export async function listCardPayments(): Promise<CardPayment[]> {
-  try {
-    return apiCall("/card-payments", { isPublic: false });
-  } catch (error) {
-    console.warn("[FALLBACK] Usando mock data para card-payments:", error);
-    return mockCardPayments;
-  }
+  return apiCall("/card-payments", { isPublic: false });
 }
 
 export async function getCardPayment(id: number): Promise<CardPayment> {
-  try {
-    return apiCall(`/card-payments/${id}`, { isPublic: false });
-  } catch (error) {
-    const mock = mockCardPayments.find((c) => c.id === id);
-    if (mock) return mock;
-    throw error;
-  }
+  return apiCall(`/card-payments/${id}`, { isPublic: false });
 }
 
 export async function updateCardPayment(

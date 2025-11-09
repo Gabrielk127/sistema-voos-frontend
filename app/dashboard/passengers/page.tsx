@@ -50,6 +50,13 @@ export default function PassengersPage() {
       required: true,
     },
     {
+      name: "password",
+      label: "Senha",
+      type: "text",
+      placeholder: "Mínimo 6 caracteres",
+      required: true,
+    },
+    {
       name: "cpf",
       label: "CPF",
       type: "text",
@@ -77,6 +84,7 @@ export default function PassengersPage() {
           await createPassenger({
             username: data.username,
             email: data.email,
+            password: data.password,
             cpf: data.cpf,
           });
           await loadPassengers();
@@ -89,6 +97,7 @@ export default function PassengersPage() {
           await updatePassenger(id, {
             username: data.username,
             email: data.email,
+            password: data.password,
             cpf: data.cpf,
           });
           await loadPassengers();

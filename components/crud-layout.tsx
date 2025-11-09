@@ -136,36 +136,12 @@ export function CRUDLayout<T = any>({
   };
 
   const handleSave = async () => {
-    console.log("🟠 [CRUD-LAYOUT] handleSave chamado");
-    console.log(
-      "🟠 [CRUD-LAYOUT] formData:",
-      JSON.stringify(formData, null, 2)
-    );
-    console.log("🟠 [CRUD-LAYOUT] formData keys:", Object.keys(formData));
-    console.log(
-      "🟠 [CRUD-LAYOUT] Campos esperados:",
-      fields.map((f) => f.name)
-    );
-
     setSaving(true);
     try {
       if (editingId) {
-        console.log(
-          "🟡 [CRUD-LAYOUT] Editando item:",
-          editingId,
-          "dados:",
-          formData
-        );
         await onEdit(editingId, formData);
         setMessage({ type: "success", text: "Atualizado com sucesso!" });
       } else {
-        console.log("🟡 [CRUD-LAYOUT] Criando novo item com dados:", formData);
-        console.log(
-          "🟡 [CRUD-LAYOUT] Campos do formulário:",
-          Object.entries(formData)
-            .map(([k, v]) => `${k}=${v}`)
-            .join(", ")
-        );
         await onAdd(formData);
         setMessage({ type: "success", text: "Criado com sucesso!" });
       }
@@ -175,7 +151,6 @@ export function CRUDLayout<T = any>({
         resetForm();
       }, 1500);
     } catch (error) {
-      console.error("🔴 [CRUD-LAYOUT] Erro:", error);
       setMessage({
         type: "error",
         text: error instanceof Error ? error.message : "Erro ao salvar",
@@ -315,7 +290,6 @@ export function CRUDLayout<T = any>({
                   </tr>
                 ) : (
                   data.map((item, index) => {
-                    console.log(`[CRUD-TABLE] Rendering row ${index}:`, item);
                     return (
                       <tr
                         key={(item as any).id}
@@ -323,9 +297,6 @@ export function CRUDLayout<T = any>({
                       >
                         {displayFields.map((field) => {
                           const value = (item as any)[field];
-                          console.log(
-                            `[CRUD-TABLE] Field "${field}" = ${value} (type: ${typeof value})`
-                          );
                           return (
                             <td
                               key={field}

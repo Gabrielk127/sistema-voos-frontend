@@ -73,18 +73,12 @@ export function FormDialog({
     text: string;
   } | null>(null);
 
-  // Sincronizar formData quando initialData mudar (apenas quando editing)
+  // Sincronizar formData quando initialData ou open mudar
   useEffect(() => {
-    if (isEditing) {
-      console.log(
-        "[FORM-DIALOG] 📝 Editando - sincronizando initialData:",
-        initialData
-      );
+    if (open) {
       setFormData(initialData);
-    } else {
-      console.log("[FORM-DIALOG] ➕ Criando novo - mantendo formData atual");
     }
-  }, [initialData, isEditing]);
+  }, [initialData, open]);
 
   // Agrupar campos por seção
   const sections = Array.from(
@@ -101,19 +95,9 @@ export function FormDialog({
   };
 
   const handleSave = async () => {
-    console.log("🟡 [FORM-DIALOG] handleSave chamado");
-    console.log(
-      "🟡 [FORM-DIALOG] formData current:",
-      JSON.stringify(formData, null, 2)
-    );
-    console.log("🟡 [FORM-DIALOG] formData keys:", Object.keys(formData));
-    console.log("🟡 [FORM-DIALOG] formData values:", Object.values(formData));
-
     try {
       setSaving(true);
-      console.log("🟡 [FORM-DIALOG] Iniciando onSave com:", formData);
       await onSave(formData);
-      console.log("🟢 [FORM-DIALOG] onSave completado com sucesso");
 
       setMessage({
         type: "success",
@@ -307,26 +291,16 @@ function FieldsGroup({
     // Carregar opções para selects
     fields.forEach((field) => {
       if (field.type === "select" && field.fetchOptions) {
-        console.log(
-          `[FORM-DIALOG] Carregando opções para campo: ${field.name}`
-        );
         field
           .fetchOptions()
           .then((options) => {
-            console.log(
-              `[FORM-DIALOG] Opções carregadas para ${field.name}:`,
-              options
-            );
             setSelectOptions((prev) => ({
               ...prev,
               [field.name]: options,
             }));
           })
           .catch((err) => {
-            console.error(
-              `[FORM-DIALOG] Erro ao carregar opções para ${field.name}:`,
-              err
-            );
+            console.error(`Erro ao carregar opções para ${field.name}:`, err);
           });
       }
     });
@@ -353,10 +327,6 @@ function FieldsGroup({
                 id={field.name}
                 value={formData[field.name] || ""}
                 onChange={(e) => {
-                  console.log(
-                    `[FORM-DIALOG] Campo ${field.name} alterado para:`,
-                    e.target.value
-                  );
                   onFieldChange(field.name, e.target.value);
                 }}
                 disabled={saving}

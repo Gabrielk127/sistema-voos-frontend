@@ -58,18 +58,18 @@ export default function AirportsPage() {
       required: true,
     },
     {
+      name: "state",
+      label: "Estado",
+      type: "text",
+      placeholder: "SP",
+      required: true,
+    },
+    {
       name: "country",
       label: "País",
       type: "text",
       placeholder: "Brasil",
       required: true,
-    },
-    {
-      name: "description",
-      label: "Descrição",
-      type: "text",
-      placeholder: "Descrição do aeroporto",
-      required: false,
     },
   ];
 
@@ -94,8 +94,8 @@ export default function AirportsPage() {
             code: data.code,
             name: data.name,
             city: data.city,
+            state: data.state,
             country: data.country,
-            description: data.description,
           });
           await loadAirports();
         }}
@@ -108,8 +108,8 @@ export default function AirportsPage() {
             code: data.code,
             name: data.name,
             city: data.city,
+            state: data.state,
             country: data.country,
-            description: data.description,
           });
           await loadAirports();
         }}

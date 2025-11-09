@@ -85,7 +85,7 @@ const menuItems: MenuItem[] = [
     requiredRoles: ["ADMIN"],
   },
 
-  // ---- TODOS AUTENTICADOS ----
+  // ---- OUTROS (TODOS AUTENTICADOS) ----
   {
     icon: Ticket,
     label: "Passagens",
