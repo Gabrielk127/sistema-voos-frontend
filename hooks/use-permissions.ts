@@ -67,7 +67,7 @@ export function usePermissions() {
   const canEditFlights = () => hasRole("ADMIN");
   const canDeleteFlights = () => hasRole("ADMIN");
 
-  const canViewPassengers = () => hasRole(["ADMIN", "MODERATOR"]); // GET /passengers requer ADMIN/MOD
+  const canViewPassengers = () => true; // GET /passengers qualquer autenticado
   const canManagePassengers = () => hasRole("ADMIN"); // POST/DELETE requer ADMIN
   const canCreatePassengers = () => hasRole("ADMIN");
   const canEditPassengers = () => true; // PUT qualquer autenticado
@@ -86,16 +86,16 @@ export function usePermissions() {
   const canDeleteAircraft = () => hasRole("ADMIN");
 
   // Tickets: GET requer ADMIN/MOD, POST/PUT/DELETE qualquer autenticado
-  const canViewTickets = () => hasRole(["ADMIN", "MODERATOR"]); // GET /tickets
+  const canViewTickets = () => hasRole(["ADMIN", "MODERATOR"]); // GET /tickets (listar todos)
   const canManageTickets = () => true; // POST/PUT/DELETE qualquer autenticado
-  const canCreateTickets = () => hasRole(["ADMIN", "MODERATOR"]); // Precisa listar bookings
+  const canCreateTickets = () => true; // POST qualquer autenticado
   const canEditTickets = () => true; // PUT qualquer autenticado
   const canDeleteTickets = () => true; // DELETE qualquer autenticado
 
   // Bookings: GET requer ADMIN/MOD, POST/PUT/DELETE qualquer autenticado
-  const canViewBookings = () => hasRole(["ADMIN", "MODERATOR"]); // GET /bookings
+  const canViewBookings = () => hasRole(["ADMIN", "MODERATOR"]); // GET /bookings (listar todos)
   const canManageBookings = () => true; // POST/PUT/DELETE qualquer autenticado
-  const canCreateBookings = () => hasRole(["ADMIN", "MODERATOR"]); // Precisa listar passageiros e voos
+  const canCreateBookings = () => true; // POST qualquer autenticado
   const canEditBookings = () => true; // PUT qualquer autenticado
   const canDeleteBookings = () => true; // DELETE qualquer autenticado
 

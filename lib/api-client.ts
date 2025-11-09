@@ -90,6 +90,14 @@ async function apiCall<T>(
     const token = getAuthToken();
     if (token) {
       headers["Authorization"] = `Bearer ${token}`;
+      console.log(
+        "[API-CALL] Token enviado para:",
+        endpoint,
+        "Token:",
+        token.substring(0, 20) + "..."
+      );
+    } else {
+      console.warn("[API-CALL] Nenhum token encontrado para:", endpoint);
     }
   }
 
@@ -98,6 +106,15 @@ async function apiCall<T>(
       ...fetchOptions,
       headers,
     });
+
+    console.log(
+      "[API-CALL] Resposta para",
+      endpoint,
+      "- Status:",
+      response.status,
+      "OK:",
+      response.ok
+    );
 
     if (response.status === 204) {
       return {} as T;

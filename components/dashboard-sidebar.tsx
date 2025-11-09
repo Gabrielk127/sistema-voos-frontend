@@ -33,6 +33,20 @@ const menuItems: MenuItem[] = [
   // ---- VOOS (Público - todos veem) ----
   { icon: Plane, label: "Voos", href: "/dashboard/flights" },
 
+  // ---- RESERVAS E PASSAGENS (TODOS AUTENTICADOS) ----
+  {
+    icon: Ticket,
+    label: "Passagens",
+    href: "/dashboard/tickets",
+    requiredRoles: ["ADMIN", "MODERATOR", "USER"],
+  },
+  {
+    icon: BookOpen,
+    label: "Reservas",
+    href: "/dashboard/reservations",
+    requiredRoles: ["ADMIN", "MODERATOR", "USER"],
+  },
+
   // ---- ADMIN ONLY ----
   {
     icon: PlaneTakeoff,
@@ -46,6 +60,8 @@ const menuItems: MenuItem[] = [
     href: "/dashboard/airports",
     requiredRoles: ["ADMIN"],
   },
+
+  // ---- ADMIN/MODERATOR ----
   {
     icon: Users,
     label: "Passageiros",
@@ -83,20 +99,6 @@ const menuItems: MenuItem[] = [
     label: "Tripulação de Voo",
     href: "/dashboard/flight-crews",
     requiredRoles: ["ADMIN"],
-  },
-
-  // ---- OUTROS (TODOS AUTENTICADOS) ----
-  {
-    icon: Ticket,
-    label: "Passagens",
-    href: "/dashboard/tickets",
-    requiredRoles: ["ADMIN", "MODERATOR", "USER"],
-  },
-  {
-    icon: BookOpen,
-    label: "Reservas",
-    href: "/dashboard/reservations",
-    requiredRoles: ["ADMIN", "MODERATOR", "USER"],
   },
 ];
 

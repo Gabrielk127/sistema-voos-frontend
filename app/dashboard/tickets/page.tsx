@@ -11,6 +11,7 @@ import {
   listBookings,
   type Booking,
 } from "@/lib/api-client";
+import { mockBookings } from "@/lib/mock-data";
 import { Ticket as TicketIcon, Plus, Trash2 } from "lucide-react";
 import { usePermissions } from "@/hooks/use-permissions";
 import { Button } from "@/components/ui/button";
@@ -53,11 +54,15 @@ export default function TicketsPage() {
     checkInCompleted: "false",
   });
 
-  const { canViewTickets, canCreateTickets, canDeleteTickets } =
-    usePermissions();
+  const {
+    canViewTickets,
+    canManageTickets,
+    canCreateTickets,
+    canDeleteTickets,
+  } = usePermissions();
 
   useEffect(() => {
-    if (canViewTickets()) {
+    if (canManageTickets()) {
       loadData();
     } else {
       setError("Você não tem permissão para acessar passagens");
@@ -69,12 +74,30 @@ export default function TicketsPage() {
     try {
       setLoading(true);
       setError(null);
-      const [ticketsData, bookingsData] = await Promise.all([
-        listTickets(),
-        listBookings(),
-      ]);
-      setTickets(ticketsData);
-      setBookings(bookingsData);
+
+      // USER não pode listar passagens, então não tenta fazer GET /tickets
+      if (!canViewTickets()) {
+        // USER: apenas usa mock data de reservas para o formulário
+        console.log(
+          "[TICKETS] USER detectado - carregando mock data para formulário"
+        );
+        const mockBooks = await new Promise<Booking[]>((resolve) => {
+          setTimeout(() => resolve(mockBookings), 100);
+        });
+        setBookings(mockBooks);
+        setTickets([]); // Nunca lista passagens para USER
+      } else {
+        // ADMIN/MOD: carrega tudo incluindo lista de passagens
+        console.log(
+          "[TICKETS] ADMIN/MOD detectado - carregando lista completa"
+        );
+        const [ticketsData, bookingsData] = await Promise.all([
+          listTickets(),
+          listBookings(),
+        ]);
+        setTickets(ticketsData);
+        setBookings(bookingsData);
+      }
     } catch (err) {
       console.error("Error loading data:", err);
       setError("Erro ao carregar dados");
@@ -307,104 +330,122 @@ export default function TicketsPage() {
           </Card>
         )}
 
-        {/* Table */}
-        <Card className="shadow-md">
-          <CardHeader>
-            <CardTitle>Lista de Passagens</CardTitle>
-            <CardDescription>
-              {tickets.length} passagens encontradas
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b bg-muted/50">
-                    <th className="text-left py-3 px-4 font-semibold">ID</th>
-                    <th className="text-left py-3 px-4 font-semibold">
-                      Passageiro
-                    </th>
-                    <th className="text-left py-3 px-4 font-semibold">
-                      Assento
-                    </th>
-                    <th className="text-left py-3 px-4 font-semibold">
-                      Check-in
-                    </th>
-                    <th className="text-right py-3 px-4 font-semibold">
-                      Ações
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {loading ? (
-                    <tr>
-                      <td colSpan={5} className="text-center py-8">
-                        Carregando...
-                      </td>
+        {/* Table - Apenas para ADMIN/MOD */}
+        {canViewTickets() && (
+          <Card className="shadow-md">
+            <CardHeader>
+              <CardTitle>Lista de Passagens</CardTitle>
+              <CardDescription>
+                {tickets.length} passagens encontradas
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="text-left py-3 px-4 font-semibold">ID</th>
+                      <th className="text-left py-3 px-4 font-semibold">
+                        Passageiro
+                      </th>
+                      <th className="text-left py-3 px-4 font-semibold">
+                        Assento
+                      </th>
+                      <th className="text-left py-3 px-4 font-semibold">
+                        Check-in
+                      </th>
+                      <th className="text-right py-3 px-4 font-semibold">
+                        Ações
+                      </th>
                     </tr>
-                  ) : tickets.length === 0 ? (
-                    <tr>
-                      <td colSpan={5} className="text-center py-8">
-                        Nenhuma passagem encontrada
-                      </td>
-                    </tr>
-                  ) : (
-                    tickets.map((ticket) => (
-                      <tr
-                        key={ticket.id}
-                        className="border-b hover:bg-muted/50"
-                      >
-                        <td className="py-3 px-4">{ticket.id}</td>
-                        <td className="py-3 px-4">{ticket.passengerName}</td>
-                        <td className="py-3 px-4">{ticket.seatNumber}</td>
-                        <td className="py-3 px-4">
-                          {ticket.checkInCompleted ? "✅ Sim" : "❌ Não"}
-                        </td>
-                        <td className="py-3 px-4 text-right">
-                          {canDeleteTickets() && (
-                            <AlertDialog>
-                              <AlertDialogTrigger asChild>
-                                <Button
-                                  variant="destructive"
-                                  size="sm"
-                                  className="gap-1"
-                                >
-                                  <Trash2 className="w-3 h-3" />
-                                  Deletar
-                                </Button>
-                              </AlertDialogTrigger>
-                              <AlertDialogContent>
-                                <AlertDialogHeader>
-                                  <AlertDialogTitle>
-                                    Você tem certeza?
-                                  </AlertDialogTitle>
-                                  <AlertDialogDescription>
-                                    Esta ação não pode ser desfeita.
-                                  </AlertDialogDescription>
-                                </AlertDialogHeader>
-                                <div className="flex gap-3 justify-end">
-                                  <AlertDialogCancel>
-                                    Cancelar
-                                  </AlertDialogCancel>
-                                  <AlertDialogAction
-                                    onClick={() => handleDelete(ticket.id)}
-                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                  >
-                                    Deletar
-                                  </AlertDialogAction>
-                                </div>
-                              </AlertDialogContent>
-                            </AlertDialog>
-                          )}
+                  </thead>
+                  <tbody>
+                    {loading ? (
+                      <tr>
+                        <td colSpan={5} className="text-center py-8">
+                          Carregando...
                         </td>
                       </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
+                    ) : tickets.length === 0 ? (
+                      <tr>
+                        <td colSpan={5} className="text-center py-8">
+                          Nenhuma passagem encontrada
+                        </td>
+                      </tr>
+                    ) : (
+                      tickets.map((ticket) => (
+                        <tr
+                          key={ticket.id}
+                          className="border-b hover:bg-muted/50"
+                        >
+                          <td className="py-3 px-4">{ticket.id}</td>
+                          <td className="py-3 px-4">{ticket.passengerName}</td>
+                          <td className="py-3 px-4">{ticket.seatNumber}</td>
+                          <td className="py-3 px-4">
+                            {ticket.checkInCompleted ? "✅ Sim" : "❌ Não"}
+                          </td>
+                          <td className="py-3 px-4 text-right">
+                            {canDeleteTickets() && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    variant="destructive"
+                                    size="sm"
+                                    className="gap-1"
+                                  >
+                                    <Trash2 className="w-3 h-3" />
+                                    Deletar
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>
+                                      Você tem certeza?
+                                    </AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Esta ação não pode ser desfeita.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <div className="flex gap-3 justify-end">
+                                    <AlertDialogCancel>
+                                      Cancelar
+                                    </AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => handleDelete(ticket.id)}
+                                      className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    >
+                                      Deletar
+                                    </AlertDialogAction>
+                                  </div>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Info para USER */}
+        {!canViewTickets() && !loading && (
+          <Card className="shadow-md bg-blue-50 border-blue-200">
+            <CardHeader>
+              <CardTitle className="text-blue-900">ℹ️ Informação</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-blue-900">
+                Você pode criar e gerenciar suas próprias passagens usando o
+                formulário acima. Para visualizar outras passagens, entre em
+                contato com um administrador.
+              </p>
+            </CardContent>
+          </Card>
+        )}
       </div>
     </DashboardLayout>
   );
